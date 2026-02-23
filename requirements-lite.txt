@@ -1,0 +1,14 @@
+# Docker Web-only deployment (no ASR engine, no GPU)
+# 对应 pyproject.toml 的 [project].dependencies (不含 optional-dependencies)
+# 如需自动生成: uv pip compile pyproject.toml --no-extras -o requirements-lite.txt
+fastapi>=0.128.0
+uvicorn>=0.40.0
+python-multipart>=0.0.21
+requests>=2.32.5
+httpx>=0.28.0
+yt-dlp>=2025.12.8
+openai>=2.15.0
+dashscope>=1.14.0
+pydantic-settings>=2.12.0
+pillow>=12.0.0
+packaging>=24.0

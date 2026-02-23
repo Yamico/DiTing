@@ -1,0 +1,18 @@
+services:
+  asr-web:
+    build: .
+    image: diting:latest
+    container_name: diting-web
+    ports:
+      - "5023:5023"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      # Mount External FFmpeg (Must be Linux AMD64 binary)
+      - ./bin/linux/ffmpeg:/usr/local/bin/ffmpeg:ro
+      - ./bin/linux/ffprobe:/usr/local/bin/ffprobe:ro
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+    restart: unless-stopped

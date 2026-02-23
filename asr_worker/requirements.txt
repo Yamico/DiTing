@@ -1,0 +1,3 @@
+-r requirements-sensevoice.txt
+-r requirements-whisper.txt
+-r requirements-qwen.txt

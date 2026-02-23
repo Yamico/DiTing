@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+data/
+temp_downloads/
+temp_uploads/
+/db/
+logs/
+records/
+
+*.egg-info
+*.db
+.pytest_cache/
+
+# Virtual environments
+.venv
+.env
+
+node_modules/
+bin/
+.agent/
+launcher_config.json
+asr_worker/temp_uploads/
+asr_worker/worker_config.yaml
+tray_config.json

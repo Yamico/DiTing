@@ -1,0 +1,17 @@
+__pycache__
+.agent/
+.pytest_cache
+.venv
+bin/
+data/
+test/
+logs/
+scripts/
+userscripts/
+
+*.pyc
+*.pyo
+.git
+.env
+*.vbs
+*.bat

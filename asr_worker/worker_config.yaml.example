@@ -1,0 +1,39 @@
+# DiTing ASR Worker 默认配置
+# 优先级: 环境变量 > 本文件 > 代码默认值
+
+engine: sensevoice           # env: ASR_ENGINE
+port: 8001                   # env: PORT
+device: "cuda:0"             # env: ASR_DEVICE  (cuda:0 | cuda:1 | cpu)
+max_concurrency: 1           # env: MAX_CONCURRENCY  (GPU 并发数, 1=排队执行防 OOM)
+
+# 声明此 Worker 可访问的共享路径 (跨机部署时使用)
+# 简单格式 (两端路径一致):  shared_paths: ["/data"]
+# 映射格式 (两端路径不同):  shared_paths: [{server: "/app/data", worker: "/mnt/nfs/data"}]
+shared_paths: []             # env: SHARED_PATHS (简单格式, 逗号分隔)
+
+# 临时上传目录 (Upload 模式)
+temp_upload_dir: "temp_uploads"  # env: TEMP_UPLOAD_DIR
+
+# 模型统一存储目录 (所有引擎的模型都下载到这里)
+# 设置后自动向下传播: MODELSCOPE_CACHE, WHISPER_MODEL_PATH, HF_HOME
+# 各引擎的 cache_dir/download_root 可单独覆盖此值
+model_base_path: null            # env: MODEL_BASE_PATH  (如 "E:\\AI_Models" 或 "/models/ai")
+
+# 各引擎模型配置 (通常无需修改, model_base_path 已统一管理存储位置)
+models:
+  sensevoice:
+    model_id: "iic/SenseVoiceSmall"
+    vad_model: "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
+    vad_max_segment_time: 30000
+    cache_dir: null           # null = 使用 MODELSCOPE_CACHE 或系统默认
+
+  whisper:
+    model_name: "large-v3-turbo"
+    download_root: null       # null = 使用 WHISPER_MODEL_PATH 或 model_base_path
+
+  qwen3asr:
+    model_name: "Qwen/Qwen3-ASR-1.7B"
+    aligner_name: "Qwen/Qwen3-ForcedAligner-0.6B"
+    use_aligner: true
+    batch_size: 8
+    max_tokens: 256
