@@ -1,2 +1,2 @@
 -r requirements-common.txt
-openai-whisper
+openai-whisper>=20250625

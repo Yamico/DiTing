@@ -1,2 +1,2 @@
 -r requirements-common.txt
-qwen-asr
+qwen-asr>=0.0.6

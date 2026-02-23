@@ -5,7 +5,7 @@ uvicorn>=0.40.0
 python-multipart>=0.0.21
 requests>=2.32.5
 httpx>=0.28.0
-numpy
+numpy>=1.26.0
 torch
 torchaudio
-pyyaml
+pyyaml>=6.0
