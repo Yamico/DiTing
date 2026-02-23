@@ -11,7 +11,7 @@ WORKDIR /app
 COPY requirements-lite.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements-lite.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir -r requirements-lite.txt
 
 # Extract version from pyproject.toml into a plain file for runtime
 COPY pyproject.toml /tmp/pyproject.toml
