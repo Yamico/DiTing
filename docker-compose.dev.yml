@@ -1,0 +1,4 @@
+services:
+  asr-web:
+    build: .
+    image: diting:local
