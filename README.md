@@ -4,10 +4,10 @@
 
 **你的私人视频知识库 — 本地 ASR · AI 分析 · 沉浸式阅读**
 
-[![Status](https://img.shields.io/badge/Status-Active-success)](https://github.com)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org)
-[![React](https://img.shields.io/badge/Frontend-React_18-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/Yamico/DiTing?style=flat-square&logo=github)](https://github.com/Yamico/DiTing/releases)
+[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io%2Fyamico%2Fditing-2496ED?style=flat-square&logo=docker&logoColor=white)](https://ghcr.io/yamico/diting)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 </div>
 
@@ -100,7 +100,7 @@ DiTing/
 ### 安装
 
 ```bash
-git clone <repository_url> DiTing
+git clone https://github.com/Yamico/DiTing.git
 cd DiTing
 cp .env.example .env         # 按需修改环境变量配置
 ```
@@ -161,18 +161,55 @@ uv run python scripts/run_worker.py --engine sensevoice   # ASR Worker (:8001)
 
 Docker 镜像仅包含 Web 服务（不含 ASR 引擎），ASR 由远程 Worker 或云端提供。
 
+### 快速启动（推荐）
+
+镜像已发布至 GitHub Container Registry，无需本地构建：
+
 ```bash
-# 1. 将 Linux 版 ffmpeg/ffprobe 放入 bin/linux/
-# 2. 构建并启动
+docker pull ghcr.io/yamico/diting:latest
+```
+
+1. 创建项目目录并准备配置：
+
+```bash
+mkdir diting && cd diting
+
+# 下载示例配置
+curl -O https://raw.githubusercontent.com/Yamico/DiTing/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/Yamico/DiTing/main/.env.example
+cp .env.example .env
+```
+
+2. 下载并准备 FFmpeg（Docker 镜像不含 FFmpeg，需自行挂载 Linux AMD64 版本）：
+
+```bash
+mkdir -p bin/linux
+cd bin/linux
+# 下载静态编译版的 FFmpeg
+wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+# 解压
+tar -xvf ffmpeg-release-amd64-static.tar.xz --strip-components=1
+cd ../..
+```
+
+3. 编辑 `.env`，配置 ASR Worker 地址，然后启动：
+
+```bash
 docker compose up -d
 ```
 
-在 `docker-compose.yml` 中通过 `ASR_WORKERS` 环境变量指向 GPU 节点：
+启动后访问 **http://localhost:5023/app/** 即可。
 
-```yaml
-environment:
-  - ASR_WORKERS={"sensevoice":"http://gpu-server:8001","whisper":"http://gpu-server:8002"}
+### 环境变量说明
+
+在 `.env` 中通过 `ASR_WORKERS` 指向 GPU 节点：
+
+```env
+ASR_WORKERS={"sensevoice":"http://gpu-server:8001","whisper":"http://gpu-server:8002"}
 ```
+
+> [!TIP]
+> 如果只使用阿里百炼等云端 ASR，可以不配置 Worker 地址。
 
 ### 远程 Worker 部署
 

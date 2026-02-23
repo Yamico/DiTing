@@ -1,7 +1,6 @@
 services:
   asr-web:
-    build: .
-    image: diting:latest
+    image: ghcr.io/yamico/diting:latest
     container_name: diting-web
     ports:
       - "5023:5023"
