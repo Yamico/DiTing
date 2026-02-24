@@ -39,6 +39,20 @@ export function stripSubtitleMetadata(text: string): string {
     return result.join('\n')
 }
 
+// Helper: Detect if text contains SRT/subtitle metadata
+export function hasSrtMetadata(text: string): boolean {
+    if (!text) return false
+    // Check first 500 chars for common patterns
+    const sample = text.slice(0, 500)
+    // SRT timestamps: 00:00:00,000 --> 00:00:00,000
+    if (/\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}/.test(sample)) return true
+    // WebVTT short: 00:00.000 --> 00:00.000
+    if (/\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}\.\d{3}/.test(sample)) return true
+    // Whisper inline timestamps: <|0.00|>
+    if (/<\|[\d.]+\|>/.test(sample)) return true
+    return false
+}
+
 // Helper: Format time
 export function formatTime(seconds: number | null): string {
     if (seconds === null || seconds === undefined) return '0:00'

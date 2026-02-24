@@ -4,7 +4,7 @@ import { updateSegmentText, deleteSegment, deleteSummary, toggleSegmentPin } fro
 import { useToast } from '../contexts/ToastContext'
 import { useQueryClient } from '@tanstack/react-query'
 import Icons from './ui/Icons'
-import { cleanEmotionTags, formatTime, buildSummaryTree, stripSubtitleMetadata } from './segmentHelpers'
+import { cleanEmotionTags, formatTime, buildSummaryTree, stripSubtitleMetadata, hasSrtMetadata } from './segmentHelpers'
 import SummaryNode from './SummaryNode'
 
 export interface RefineContext {
@@ -189,7 +189,12 @@ export default function SegmentCard({ segment, onRefresh, isExpandedDefault = fa
                     title={showTranscription ? '点击收起转录文本' : '点击展开转录文本'}
                 >
                     <div className="flex items-center gap-1">
-                        {segment.asr_model === 'Subtitle' ? <Icons.FileText className="w-3 h-3" /> : <Icons.Mic className="w-3 h-3" />}
+                        {segment.asr_model === 'Subtitle'
+                            ? <Icons.FileText className="w-3 h-3" />
+                            : hasSrtMetadata(segment.text || '')
+                                ? <Icons.Subtitles className="w-3 h-3" />
+                                : <Icons.Mic className="w-3 h-3" />
+                        }
                         <span className="hidden @min-[480px]:inline">{segment.asr_model === 'Subtitle' ? 'Subtitle' : (segment.asr_model || 'Unknown')}</span>
                         {showTranscription ? '▼' : '▶'}
                     </div>
@@ -221,47 +226,6 @@ export default function SegmentCard({ segment, onRefresh, isExpandedDefault = fa
                     </button>
                 )}
 
-                {/* Subtitle Badge */}
-                {(segment.is_subtitle === 1 || segment.is_subtitle === true) && (
-                    <div className="relative" ref={previewRef}>
-                        <button
-                            className="shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded flex items-center gap-1 cursor-pointer hover:bg-green-500/30 transition-colors"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowPreprocessPreview(!showPreprocessPreview);
-                            }}
-                            title="点击预览预处理后的文本（去除序号与时间戳）"
-                        >
-                            <Icons.FileText className="w-3 h-3" /><span className="hidden @min-[480px]:inline">字幕</span>
-                        </button>
-
-                        {showPreprocessPreview && (
-                            <div
-                                className="absolute top-full left-0 mt-2 z-50 w-80 sm:w-96 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg)]/50 flex flex-wrap justify-between items-center gap-2">
-                                    <span className="text-xs font-semibold text-[var(--color-text)] flex items-center gap-1">
-                                        <Icons.Sparkles className="w-3.5 h-3.5 text-[var(--color-primary)]" /> 预处理预览
-                                    </span>
-                                    {(() => {
-                                        const originalLen = (segment.text || '').length;
-                                        const newLen = stripSubtitleMetadata(segment.text || '').length;
-                                        const savings = originalLen > 0 ? ((originalLen - newLen) / originalLen * 100).toFixed(1) : '0.0';
-                                        return (
-                                            <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg)] px-1.5 py-0.5 rounded border border-[var(--color-border)]">
-                                                节省 <span className="text-emerald-500 font-mono">-{savings}%</span> ({originalLen} → {newLen} 字)
-                                            </span>
-                                        )
-                                    })()}
-                                </div>
-                                <div className="p-3 text-xs leading-5 text-[var(--color-text-muted)] max-h-64 overflow-y-auto whitespace-pre-wrap font-mono select-text cursor-text">
-                                    {stripSubtitleMetadata(segment.text || '') || <span className="italic opacity-50">暂无内容</span>}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 {/* Right Actions Cluster */}
                 <div className="ml-auto flex items-center" onClick={e => e.stopPropagation()}>
@@ -341,6 +305,35 @@ export default function SegmentCard({ segment, onRefresh, isExpandedDefault = fa
                             </div>
                         ) : showTranscription ? (
                             <div className="mt-4">
+                                {/* Preprocess preview bar — shown inline when text has SRT metadata */}
+                                {hasSrtMetadata(segment.text || '') && (
+                                    <div className="relative mb-3" ref={previewRef}>
+                                        <button
+                                            className="text-[11px] px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors flex items-center gap-1.5"
+                                            onClick={() => setShowPreprocessPreview(!showPreprocessPreview)}
+                                            title="预览去除时间戳后的文本"
+                                        >
+                                            <Icons.Subtitles className="w-3 h-3" />
+                                            预处理预览
+                                            {(() => {
+                                                const originalLen = (segment.text || '').length
+                                                const newLen = stripSubtitleMetadata(segment.text || '').length
+                                                const pct = originalLen > 0 ? ((originalLen - newLen) / originalLen * 100).toFixed(0) : '0'
+                                                return <span className="text-emerald-500 font-mono">-{pct}%</span>
+                                            })()}
+                                        </button>
+                                        {showPreprocessPreview && (
+                                            <div
+                                                className="mt-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg overflow-hidden"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div className="p-3 text-xs leading-5 text-[var(--color-text-muted)] max-h-48 overflow-y-auto whitespace-pre-wrap font-mono select-text cursor-text">
+                                                    {stripSubtitleMetadata(segment.text || '') || <span className="italic opacity-50">暂无内容</span>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <p className="text-sm leading-7 text-[var(--color-text)] whitespace-pre-wrap selection:bg-[var(--color-primary)]/30">
                                     {highlightText ? highlightedText : cleanEmotionTags(segment.text || '')}
                                 </p>

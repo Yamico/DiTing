@@ -477,6 +477,16 @@ export function Mic({ className = 'w-4 h-4', strokeWidth = 2 }: IconProps) {
     )
 }
 
+// Subtitles / Closed Captions
+export function Subtitles({ className = 'w-4 h-4', strokeWidth = 2 }: IconProps) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="2" y="4" width="20" height="16" rx="2" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M7 13h4M15 13h2M7 17h2M13 17h4" />
+        </svg>
+    )
+}
+
 // Layout / Embed
 export function Layout({ className = 'w-4 h-4', strokeWidth = 2 }: IconProps) {
     return (
@@ -583,6 +593,7 @@ const Icons = {
     Clock,
     Bot,
     Mic,
+    Subtitles,
     Layout,
     Lightbulb,
     // Square / Unchecked
