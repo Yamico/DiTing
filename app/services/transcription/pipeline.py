@@ -310,13 +310,16 @@ async def _trigger_auto_analysis(
     # Queue status
     update_ai_status(transcription_id, "queued")
 
+    # Tag prompt if preprocessing was applied
+    stored_prompt = f"[Preprocessed] {auto_analyze_prompt}" if strip_subtitle else auto_analyze_prompt
+
     # Launch async analysis
     asyncio.create_task(
         process_ai_analysis(
             item_id=transcription_id,
             task_id=task_id,
             text_to_analyze=text_to_analyze,
-            prompt=auto_analyze_prompt,
+            prompt=stored_prompt,
             llm_model_id=None,
             parent_id=None,
             input_text=None,
