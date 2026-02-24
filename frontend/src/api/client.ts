@@ -233,6 +233,8 @@ export interface RetranscribeRequest {
     auto_analyze_prompt?: string
     auto_analyze_prompt_id?: number
     auto_analyze_strip_subtitle?: boolean
+    only_get_subtitles?: boolean
+    force_transcription?: boolean
 }
 
 export async function retranscribe(request: RetranscribeRequest): Promise<{ id: number }> {

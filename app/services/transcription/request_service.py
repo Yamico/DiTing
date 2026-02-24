@@ -380,6 +380,8 @@ async def prepare_retranscription(request) -> dict:
         auto_analyze_prompt_id=request.auto_analyze_prompt_id,
         auto_analyze_strip_subtitle=request.auto_analyze_strip_subtitle,
         output_format=request.output_format,
+        only_get_subtitles=request.only_get_subtitles,
+        force_transcription=request.force_transcription,
     )
 
     if source_type in ('bilibili', 'youtube'):

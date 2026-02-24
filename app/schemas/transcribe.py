@@ -127,6 +127,8 @@ class RetranscribeRequest(BaseModel):
     auto_analyze_prompt_id: Optional[int] = Field(None, description="Prompt ID for use count tracking")
     auto_analyze_strip_subtitle: bool = Field(True, description="Strip subtitle metadata before AI analysis")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
+    only_get_subtitles: bool = Field(False, description="Fail if subtitles are not available")
+    force_transcription: bool = Field(False, description="Ignore subtitles and force ASR")
 
 
 class TranscribeResponse(BaseModel):
