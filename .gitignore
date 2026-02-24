@@ -26,3 +26,4 @@ launcher_config.json
 asr_worker/temp_uploads/
 asr_worker/worker_config.yaml
 tray_config.json
+scripts/worker_manager_config.json
