@@ -15,7 +15,7 @@ def get_all_prompts():
         SELECT p.*, c.name as category_name, c.key as category_key 
         FROM prompts p
         LEFT JOIN prompt_categories c ON p.category_id = c.id
-        ORDER BY p.sort_order ASC, p.id ASC
+        ORDER BY p.use_count DESC, p.sort_order ASC, p.id ASC
     ''')
     rows = cursor.fetchall()
     conn.close()
@@ -38,6 +38,17 @@ def update_prompt(pid, name, content, category_id):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE prompts SET name=?, content=?, category_id=? WHERE id=?", (name, content, category_id, pid))
+    conn.commit()
+    conn.close()
+
+
+def increment_prompt_use_count(pid):
+    """Increment the use count of a prompt."""
+    if not pid:
+        return
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE prompts SET use_count = use_count + 1 WHERE id=?", (pid,))
     conn.commit()
     conn.close()
 

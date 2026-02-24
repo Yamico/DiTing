@@ -176,6 +176,9 @@ export interface TranscribeUrlRequest {
     quality?: string
     output_format?: string
     bookmark_only?: boolean
+    auto_analyze_prompt?: string
+    auto_analyze_prompt_id?: number
+    auto_analyze_strip_subtitle?: boolean
 }
 
 export async function transcribeBilibili(request: TranscribeUrlRequest): Promise<{ task_id: number }> {
@@ -209,6 +212,9 @@ export interface TranscribeNetworkRequest {
     quality?: string
     output_format?: string
     bookmark_only?: boolean
+    auto_analyze_prompt?: string
+    auto_analyze_prompt_id?: number
+    auto_analyze_strip_subtitle?: boolean
 }
 
 export async function transcribeNetwork(request: TranscribeNetworkRequest): Promise<{ id: number }> {
@@ -224,6 +230,9 @@ export interface RetranscribeRequest {
     use_uvr?: boolean
     prompt?: string
     output_format?: string
+    auto_analyze_prompt?: string
+    auto_analyze_prompt_id?: number
+    auto_analyze_strip_subtitle?: boolean
 }
 
 export async function retranscribe(request: RetranscribeRequest): Promise<{ id: number }> {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { transcribeBilibili, transcribeYoutube, transcribeDouyin, transcribeNetwork } from '../api'
+import { transcribeBilibili, transcribeYoutube, transcribeDouyin, transcribeNetwork, getPrompts } from '../api'
+import type { Prompt } from '../api/types'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 import Icons from './ui/Icons'
 
@@ -69,7 +70,22 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [clipboardHint, setClipboardHint] = useState('')
+    const [autoAnalyze, setAutoAnalyze] = useState(() => localStorage.getItem('diting_auto_analyze') === 'true')
+    const [selectedPromptId, setSelectedPromptId] = useState<number | ''>('')
+    const [prompts, setPrompts] = useState<Prompt[]>([])
+    const [stripSubtitle, setStripSubtitle] = useState(true)
     const inputRef = useRef<HTMLInputElement>(null)
+
+    // Load prompts
+    useEffect(() => {
+        getPrompts().then(data => {
+            setPrompts(data)
+            if (data && data.length > 0 && data[0]?.id) {
+                // Ensure the most used prompt is selected by default
+                setSelectedPromptId(data[0].id)
+            }
+        }).catch(err => console.error("Failed to load prompts:", err))
+    }, [])
 
     // Helper: extract a clean URL from clipboard text (handles share text like B站/抖音)
     const extractUrl = (text: string): string => {
@@ -178,7 +194,10 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                 output_format: outputFormat,
                 bookmark_only: isBookmark,
                 only_get_subtitles: subtitleMode === 'only_sub',
-                force_transcription: subtitleMode === 'force_asr'
+                force_transcription: subtitleMode === 'force_asr',
+                auto_analyze_prompt: autoAnalyze && selectedPromptId ? prompts.find(p => p.id === selectedPromptId)?.content : undefined,
+                auto_analyze_prompt_id: autoAnalyze && typeof selectedPromptId === 'number' ? selectedPromptId : undefined,
+                auto_analyze_strip_subtitle: autoAnalyze ? stripSubtitle : undefined
             }
 
             if (platform === 'bilibili') {
@@ -490,6 +509,53 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Auto Analyze — outside advanced options, visible for all transcribe sub-modes */}
+                    {mode === 'transcribe' && (
+                        <div className="space-y-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={autoAnalyze}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked
+                                        setAutoAnalyze(checked)
+                                        localStorage.setItem('diting_auto_analyze', checked ? 'true' : 'false')
+                                    }}
+                                    className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                                />
+                                <span className="text-sm font-medium">{t('addVideo.autoAnalyze')}</span>
+                            </label>
+
+                            {autoAnalyze && (
+                                <div className="space-y-2 pl-6">
+                                    {/* Prompt dropdown */}
+                                    <select
+                                        value={selectedPromptId}
+                                        onChange={(e) => setSelectedPromptId(e.target.value ? Number(e.target.value) : '')}
+                                        className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
+                                    >
+                                        <option value="">{t('addVideo.selectPrompt')}</option>
+                                        {prompts.map(p => (
+                                            <option key={p.id} value={p.id} title={p.content}>
+                                                {p.name}{p.use_count > 0 ? ` (${p.use_count})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {/* Strip subtitle preprocessing */}
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={stripSubtitle}
+                                            onChange={(e) => setStripSubtitle(e.target.checked)}
+                                            className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                                        />
+                                        <span className="text-xs text-[var(--color-text-muted)]">{t('addVideo.stripSubtitle')}</span>
+                                    </label>
                                 </div>
                             )}
                         </div>

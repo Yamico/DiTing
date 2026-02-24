@@ -354,7 +354,12 @@
             "auto": "Default: Try fetching native CC subtitles first. Fallback to ASR transcription if unavailable.",
             "only_sub": "Fail immediately if no native subtitles exist. Useful to quickly grab existing subtitles without expending CPU.",
             "force_asr": "Ignore native subtitles and force ASR transcription from scratch."
-        }
+        },
+        "autoAnalyze": "Auto AI analyze on transcription complete",
+        "selectPrompt": "Select analysis prompt",
+        "mostUsedPrompts": "Frequently used",
+        "noPrompts": "No prompts available, please add in Settings",
+        "stripSubtitle": "Subtitle preprocessing (remove timestamps etc.)"
     },
     "retranscribeModal": {
         "newSegmentHint": "A new transcription record will be created, existing content won't be overwritten",

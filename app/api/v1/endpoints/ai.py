@@ -30,6 +30,7 @@ router = APIRouter(tags=["AI"])
 class AnalyzeRequest(BaseModel):
     """Request schema for AI analysis."""
     prompt: str
+    prompt_id: Optional[int] = None
     transcription_id: Optional[int] = None
     source_id: Optional[str] = None
     llm_model_id: Optional[int] = None
@@ -127,6 +128,10 @@ async def analyze_endpoint(
     
     if not record:
         raise HTTPException(status_code=404, detail="Transcription not found. Please transcribe the video first.")
+        
+    if request.prompt_id:
+        from app.db.prompts import increment_prompt_use_count
+        increment_prompt_use_count(request.prompt_id)
     
     text_to_analyze = request.input_text
     if not text_to_analyze:

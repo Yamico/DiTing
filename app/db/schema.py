@@ -103,6 +103,7 @@ def create_all(cursor):
             content TEXT NOT NULL,
             category_id INTEGER,
             sort_order INTEGER DEFAULT 0,
+            use_count INTEGER DEFAULT 0,
             FOREIGN KEY (category_id) REFERENCES prompt_categories (id) ON DELETE SET NULL
         )
     ''')

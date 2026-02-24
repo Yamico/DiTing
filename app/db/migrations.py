@@ -46,7 +46,13 @@ def init_db():
             current = _get_version(cursor)
             if current != CURRENT_VERSION:
                 logger.info(f"⬆️ Database at v{current}, upgrading to v{CURRENT_VERSION}...")
-                # Future migrations go here, dispatched by `current` value
+                
+                # Migrations from v0.12.0 -> 0.12.1
+                if current == "0.12.0":
+                    logger.info("  -> Adding use_count column to prompts table")
+                    cursor.execute("ALTER TABLE prompts ADD COLUMN use_count INTEGER DEFAULT 0")
+                    current = "0.12.1"
+                    
                 _set_version(cursor, CURRENT_VERSION)
                 logger.info(f"✅ Upgraded to v{CURRENT_VERSION}.")
             else:

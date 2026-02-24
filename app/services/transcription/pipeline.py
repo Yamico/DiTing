@@ -15,6 +15,8 @@ from app.utils.preprocessing import separate_vocals
 from app.core.logger import logger
 from app.services.media_cache import MediaCacheService
 from app.utils.progress import ProgressHelper
+import re
+import time
 
 async def run_transcription_pipeline(
     transcription_id: int,
@@ -27,7 +29,10 @@ async def run_transcription_pipeline(
     prompt: str = None,
     output_format: str = None,
     pre_asr_hook: Optional[Callable[[int], Awaitable[Optional[str]]]] = None,
-    only_get_subtitles: bool = False
+    only_get_subtitles: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True,
 ):
     """
     Unified transcription pipeline.
@@ -88,6 +93,13 @@ async def run_transcription_pipeline(
                     
                     update_task_status(transcription_id, "completed")
                     task_manager.finish_task(transcription_id)
+                    # Also trigger AI analysis if requested
+                    if auto_analyze_prompt:
+                        await _trigger_auto_analysis(
+                            transcription_id, skipped_result, auto_analyze_prompt,
+                            auto_analyze_prompt_id, auto_analyze_strip_subtitle, source_label
+                        )
+                    
                     return
             except Exception as e:
                 logger.warning(f"⚠️ Pre-ASR hook failed: {e}")
@@ -173,8 +185,16 @@ async def run_transcription_pipeline(
         task_manager.update_progress(transcription_id, 95, "Finalizing...")
         update_transcription_text(transcription_id, raw_text)
         update_task_status(transcription_id, "completed")
-        task_manager.finish_task(transcription_id)
         logger.info(f"✅ {source_label} task completed for ID: {transcription_id}")
+        
+        # 5.5 Auto-Analyze Trigger
+        if auto_analyze_prompt:
+            await _trigger_auto_analysis(
+                transcription_id, raw_text, auto_analyze_prompt,
+                auto_analyze_prompt_id, auto_analyze_strip_subtitle, source_label
+            )
+
+        task_manager.finish_task(transcription_id)
 
     except TaskCancelledException as e:
         logger.warning(f"🛑 {source_label} Task {transcription_id} Cancelled")
@@ -240,3 +260,67 @@ async def _run_asr_with_cancel(transcription_id, audio_path, language, prompt, o
         raise TaskCancelledException("Task cancelled")
     except Exception as e:
         raise e
+
+
+async def _trigger_auto_analysis(
+    transcription_id: int,
+    raw_text: str,
+    auto_analyze_prompt: str,
+    auto_analyze_prompt_id: int,
+    strip_subtitle: bool,
+    source_label: str,
+):
+    """Shared helper to trigger AI analysis after transcription completion."""
+    from app.api.v1.endpoints.ai import process_ai_analysis
+    from app.db.prompts import increment_prompt_use_count
+    from app.db import update_ai_status, get_video_meta
+
+    # Generate task ID (same convention as normal /api/analyze endpoint)
+    task_id = -int(time.time() * 1000) % 1000000000
+
+    logger.info(f"🤖 Triggering auto-analysis for ID: {transcription_id} (prompt_id={auto_analyze_prompt_id})")
+
+    # Increment prompt use count if we have an ID
+    if auto_analyze_prompt_id:
+        increment_prompt_use_count(auto_analyze_prompt_id)
+
+    # Preprocess text: strip subtitle metadata if requested
+    text_to_analyze = raw_text
+    if strip_subtitle:
+        from app.utils.preprocessing import strip_subtitle_metadata
+        text_to_analyze = strip_subtitle_metadata(raw_text)
+    else:
+        text_to_analyze = re.sub(r'<\|.*?\|>', '', raw_text)
+
+    # Retrieve title for task center display
+    from app.db.transcriptions import get_transcription
+    record = get_transcription(transcription_id)
+    title = source_label
+    if record:
+        meta = get_video_meta(record['source'])
+        if meta:
+            title = dict(meta).get('video_title', source_label)
+
+    # Register task in task center
+    task_manager.start_task(task_id, meta={
+        "type": "ai",
+        "filename": f"AI: {title}"
+    })
+
+    # Queue status
+    update_ai_status(transcription_id, "queued")
+
+    # Launch async analysis
+    asyncio.create_task(
+        process_ai_analysis(
+            item_id=transcription_id,
+            task_id=task_id,
+            text_to_analyze=text_to_analyze,
+            prompt=auto_analyze_prompt,
+            llm_model_id=None,
+            parent_id=None,
+            input_text=None,
+            overwrite=False,
+            overwrite_id=None,
+        )
+    )

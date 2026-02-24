@@ -27,7 +27,10 @@ async def process_bilibili_transcription(
     output_format: str = None,
     source_id: str = None,
     only_get_subtitles: bool = False,
-    force_transcription: bool = False
+    force_transcription: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True
 ):
     """Process a Bilibili video for transcription"""
     # Create progress helper for downloader
@@ -101,7 +104,10 @@ async def process_bilibili_transcription(
         prompt=prompt,
         output_format=output_format,
         pre_asr_hook=pre_asr_hook,
-        only_get_subtitles=only_get_subtitles
+        only_get_subtitles=only_get_subtitles,
+        auto_analyze_prompt=auto_analyze_prompt,
+        auto_analyze_prompt_id=auto_analyze_prompt_id,
+        auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
     )
 
 async def process_youtube_transcription(
@@ -114,7 +120,10 @@ async def process_youtube_transcription(
     output_format: str = None,
     source_id: str = None,
     only_get_subtitles: bool = False,
-    force_transcription: bool = False
+    force_transcription: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True
 ):
     """Process a YouTube video for transcription"""
     from app.core.config import settings
@@ -162,7 +171,10 @@ async def process_youtube_transcription(
         prompt=prompt,
         output_format=output_format,
         pre_asr_hook=pre_asr_hook,
-        only_get_subtitles=only_get_subtitles
+        only_get_subtitles=only_get_subtitles,
+        auto_analyze_prompt=auto_analyze_prompt,
+        auto_analyze_prompt_id=auto_analyze_prompt_id,
+        auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
     )
 
 async def process_douyin_transcription(
@@ -174,7 +186,10 @@ async def process_douyin_transcription(
     source_id: str = None,
     local_file_path: str = None,
     only_get_subtitles: bool = False,
-    force_transcription: bool = False
+    force_transcription: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True
 ):
     """Process a Douyin video for transcription"""
     dl_progress = ProgressHelper(task_manager, transcription_id, 0, 30)
@@ -197,7 +212,10 @@ async def process_douyin_transcription(
         task_type=task_type,
         use_uvr=use_uvr,
         output_format=output_format,
-        only_get_subtitles=only_get_subtitles
+        only_get_subtitles=only_get_subtitles,
+        auto_analyze_prompt=auto_analyze_prompt,
+        auto_analyze_prompt_id=auto_analyze_prompt_id,
+        auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
     )
 
 async def process_network_transcription(
@@ -211,7 +229,10 @@ async def process_network_transcription(
     output_format: str = None,
     source_id: str = None,
     only_get_subtitles: bool = False,
-    force_transcription: bool = False
+    force_transcription: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True
 ):
     """Process a direct network URL for transcription"""
     dl_progress = ProgressHelper(task_manager, transcription_id, 0, 30)
@@ -230,7 +251,10 @@ async def process_network_transcription(
         language=language,
         prompt=prompt,
         output_format=output_format,
-        only_get_subtitles=only_get_subtitles
+        only_get_subtitles=only_get_subtitles,
+        auto_analyze_prompt=auto_analyze_prompt,
+        auto_analyze_prompt_id=auto_analyze_prompt_id,
+        auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
     )
 
 async def process_file_transcription(
@@ -247,7 +271,10 @@ async def process_file_transcription(
     output_format: str = None,
     source_id: str = None,
     only_get_subtitles: bool = False,
-    force_transcription: bool = False
+    force_transcription: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True
 ):
     """Process a local file upload for transcription"""
     # File is already on disk.
@@ -274,5 +301,8 @@ async def process_file_transcription(
         language=language,
         prompt=prompt,
         output_format=output_format,
-        only_get_subtitles=only_get_subtitles
+        only_get_subtitles=only_get_subtitles,
+        auto_analyze_prompt=auto_analyze_prompt,
+        auto_analyze_prompt_id=auto_analyze_prompt_id,
+        auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
     )

@@ -69,6 +69,9 @@ async def create_and_dispatch(
     use_uvr: bool = False,
     language: str = "zh",
     prompt: str = None,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True,
     output_format: str = None,
     # Source-specific
     stream_url: str = None,
@@ -204,7 +207,10 @@ async def create_and_dispatch(
             output_format,
             source_id=normalized_source,
             only_get_subtitles=only_get_subtitles,
-            force_transcription=force_transcription
+            force_transcription=force_transcription,
+            auto_analyze_prompt=auto_analyze_prompt,
+            auto_analyze_prompt_id=auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
         )
     elif source_type == 'youtube':
         background_tasks.add_task(
@@ -218,7 +224,10 @@ async def create_and_dispatch(
             output_format,
             source_id=normalized_source,
             only_get_subtitles=only_get_subtitles,
-            force_transcription=force_transcription
+            force_transcription=force_transcription,
+            auto_analyze_prompt=auto_analyze_prompt,
+            auto_analyze_prompt_id=auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
         )
     elif source_type == 'douyin':
         # Douyin requires direct_url
@@ -232,7 +241,10 @@ async def create_and_dispatch(
             source_id=normalized_source,
             local_file_path=local_file_path,
             only_get_subtitles=only_get_subtitles,
-            force_transcription=force_transcription
+            force_transcription=force_transcription,
+            auto_analyze_prompt=auto_analyze_prompt,
+            auto_analyze_prompt_id=auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
         )
     elif source_type == 'network':
         # Network requires file_path (downloaded by caller/helper)
@@ -248,7 +260,10 @@ async def create_and_dispatch(
             output_format,
             source_id=normalized_source,
             only_get_subtitles=only_get_subtitles,
-            force_transcription=force_transcription
+            force_transcription=force_transcription,
+            auto_analyze_prompt=auto_analyze_prompt,
+            auto_analyze_prompt_id=auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
         )
     elif source_type == 'file' or source_type == 'video' or source_type == 'audio':
          background_tasks.add_task(
@@ -266,7 +281,10 @@ async def create_and_dispatch(
             output_format,
             source_id=normalized_source,
             only_get_subtitles=only_get_subtitles,
-            force_transcription=force_transcription
+            force_transcription=force_transcription,
+            auto_analyze_prompt=auto_analyze_prompt,
+            auto_analyze_prompt_id=auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
         )
 
     return {

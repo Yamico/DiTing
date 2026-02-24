@@ -353,7 +353,12 @@
             "auto": "默认：优先尝试下载视频自带的CC字幕，如果没有则使用ASR进行语音转录。",
             "only_sub": "如果视频没有自带字幕，则立即失败，不会进行ASR转录。推荐用于想要快速获取现成字幕的场景。",
             "force_asr": "忽略视频自带的字幕，强制使用ASR重新进行语音转录。"
-        }
+        },
+        "autoAnalyze": "转录完成后自动使用AI分析",
+        "selectPrompt": "选择分析提示词",
+        "mostUsedPrompts": "常用提示词",
+        "noPrompts": "暂无提示词，请在设置中添加",
+        "stripSubtitle": "字幕预处理（去除时间戳等元数据）"
     },
     "retranscribeModal": {
         "newSegmentHint": "将创建新的转录记录，不会覆盖已有内容",

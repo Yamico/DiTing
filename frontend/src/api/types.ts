@@ -126,6 +126,7 @@ export interface Prompt {
     category_id: number | null
     category_name: string | null
     category_key: string | null
+    use_count: number
 }
 
 export interface PromptCategory {
