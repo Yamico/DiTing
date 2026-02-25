@@ -59,6 +59,7 @@ def create_all(cursor):
             name TEXT NOT NULL,
             base_url TEXT NOT NULL,
             api_key TEXT NOT NULL,
+            api_type TEXT DEFAULT 'chat_completions',
             is_active BOOLEAN DEFAULT 0
         )
     ''')

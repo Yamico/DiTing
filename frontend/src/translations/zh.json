@@ -164,7 +164,13 @@
             "updateSuccess": "服务商更新成功",
             "updateFailed": "更新失败",
             "deleteSuccess": "服务商已删除",
-            "deleteFailed": "删除失败"
+            "deleteFailed": "删除失败",
+            "apiType": "API 协议",
+            "apiTypeChatCompletions": "Chat Completions (标准)",
+            "apiTypeResponses": "Responses (新版)",
+            "testConnection": "测试连接",
+            "testSuccess": "连接成功 ({{ms}}ms)",
+            "testFailed": "连接失败"
         },
         "asr": {
             "title": "ASR 模型配置",

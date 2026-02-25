@@ -52,6 +52,12 @@ def init_db():
                     logger.info("  -> Adding use_count column to prompts table")
                     cursor.execute("ALTER TABLE prompts ADD COLUMN use_count INTEGER DEFAULT 0")
                     current = "0.12.1"
+
+                # Migrations from v0.12.1 -> 0.12.2
+                if current == "0.12.1":
+                    logger.info("  -> Adding api_type column to llm_providers table")
+                    cursor.execute("ALTER TABLE llm_providers ADD COLUMN api_type TEXT DEFAULT 'chat_completions'")
+                    current = "0.12.2"
                     
                 _set_version(cursor, CURRENT_VERSION)
                 logger.info(f"✅ Upgraded to v{CURRENT_VERSION}.")

@@ -13,6 +13,7 @@ class LLMProviderCreate(BaseModel):
     name: str = Field(..., min_length=1)
     base_url: str = Field(..., min_length=1)
     api_key: str = Field(..., min_length=1)
+    api_type: str = Field('chat_completions', description="API protocol type: chat_completions or responses")
 
 
 class LLMModelCreate(BaseModel):

@@ -164,7 +164,13 @@
             "updateSuccess": "Provider updated successfully",
             "updateFailed": "Failed to update",
             "deleteSuccess": "Provider deleted",
-            "deleteFailed": "Failed to delete"
+            "deleteFailed": "Failed to delete",
+            "apiType": "API Protocol",
+            "apiTypeChatCompletions": "Chat Completions (Standard)",
+            "apiTypeResponses": "Responses (New)",
+            "testConnection": "Test Connection",
+            "testSuccess": "Connected ({{ms}}ms)",
+            "testFailed": "Connection failed"
         },
         "asr": {
             "title": "ASR Model Configuration",

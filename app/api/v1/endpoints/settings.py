@@ -39,14 +39,14 @@ async def get_llm_providers():
 @router.post("/llm/providers")
 async def create_llm_provider(provider: LLMProviderCreate):
     """Create a new LLM provider"""
-    new_id = add_provider(provider.name, provider.base_url, provider.api_key)
+    new_id = add_provider(provider.name, provider.base_url, provider.api_key, provider.api_type)
     return {"id": new_id, "status": "success"}
 
 
 @router.put("/llm/providers/{provider_id}")
 async def update_llm_provider(provider_id: int, provider: LLMProviderCreate):
     """Update an existing LLM provider"""
-    update_provider(provider_id, provider.name, provider.base_url, provider.api_key)
+    update_provider(provider_id, provider.name, provider.base_url, provider.api_key, provider.api_type)
     return {"status": "success"}
 
 
@@ -83,6 +83,25 @@ async def activate_llm_model(model_id: int):
     """Set a model as the active model"""
     set_active_model(model_id)
     return {"status": "success"}
+
+
+@router.post("/llm/providers/{provider_id}/models/{model_id}/test")
+async def test_llm_model(provider_id: int, model_id: int):
+    """Test connectivity for a specific LLM model"""
+    from app.db import get_llm_model_full_by_id
+    from app.services.llm import test_llm_connection
+    
+    model_info = get_llm_model_full_by_id(model_id)
+    if not model_info:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    result = await test_llm_connection(
+        api_key=model_info['api_key'],
+        base_url=model_info['base_url'],
+        model=model_info['model_name'],
+        api_type=model_info.get('api_type', 'chat_completions')
+    )
+    return result
 
 
 # ============ ASR Models ============

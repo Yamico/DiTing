@@ -1,6 +1,6 @@
 [project]
 name = "diting"
-version = "0.12.1"
+version = "0.12.2"
 description = "DiTing - Local AI Video Knowledge Base"
 readme = "README.md"
 requires-python = ">=3.10"

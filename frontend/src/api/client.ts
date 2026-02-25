@@ -310,7 +310,7 @@ export async function getLLMProviders(): Promise<LLMProvider[]> {
     return fetchJson(`${API_BASE}/settings/llm/providers`)
 }
 
-export async function addLLMProvider(data: { name: string; base_url: string; api_key: string }): Promise<{ id: number }> {
+export async function addLLMProvider(data: { name: string; base_url: string; api_key: string; api_type?: string }): Promise<{ id: number }> {
     return fetchJson(`${API_BASE}/settings/llm/providers`, { method: 'POST', body: JSON.stringify(data) })
 }
 
@@ -318,7 +318,7 @@ export async function deleteLLMProvider(id: number): Promise<void> {
     await fetchJson(`${API_BASE}/settings/llm/providers/${id}`, { method: 'DELETE' })
 }
 
-export async function updateLLMProvider(id: number, data: { name: string; base_url: string; api_key: string }): Promise<void> {
+export async function updateLLMProvider(id: number, data: { name: string; base_url: string; api_key: string; api_type?: string }): Promise<void> {
     await fetchJson(`${API_BASE}/settings/llm/providers/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
@@ -342,6 +342,10 @@ export async function updateLLMModel(modelId: number, modelName: string): Promis
 
 export async function setActiveModel(modelId: number): Promise<void> {
     await fetchJson(`${API_BASE}/settings/llm/models/${modelId}/activate`, { method: 'POST' })
+}
+
+export async function testLLMModel(providerId: number, modelId: number): Promise<{ success: boolean; message: string; latency_ms: number }> {
+    return fetchJson(`${API_BASE}/settings/llm/providers/${providerId}/models/${modelId}/test`, { method: 'POST' })
 }
 
 // ASR Models

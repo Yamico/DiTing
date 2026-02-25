@@ -10,6 +10,7 @@ import {
     setActiveModel,
     addLLMModel,
     updateLLMModel,
+    testLLMModel,
 } from '../../api'
 import { useToast } from '../../contexts/ToastContext'
 import Icons from '../ui/Icons'
@@ -21,7 +22,7 @@ export default function LLMTab() {
     const { showUndoableDelete, showToast } = useToast()
     const [showForm, setShowForm] = useState(false)
     const [editingId, setEditingId] = useState<number | null>(null)
-    const [formData, setFormData] = useState({ name: '', base_url: '', api_key: '' })
+    const [formData, setFormData] = useState({ name: '', base_url: '', api_key: '', api_type: 'chat_completions' })
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null)
     const [hiddenModels, setHiddenModels] = useState<Set<number>>(new Set())
     const [showApiKey, setShowApiKey] = useState(false)
@@ -31,6 +32,7 @@ export default function LLMTab() {
 
     const [editingModelId, setEditingModelId] = useState<number | null>(null)
     const [editModelName, setEditModelName] = useState('')
+    const [testResults, setTestResults] = useState<Record<number, { loading: boolean; success?: boolean; message?: string; latency_ms?: number }>>({})
 
     const { data: providers, isLoading } = useQuery({
         queryKey: ['llm-providers'],
@@ -42,19 +44,19 @@ export default function LLMTab() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['llm-providers'] })
             setShowForm(false)
-            setFormData({ name: '', base_url: '', api_key: '' })
+            setFormData({ name: '', base_url: '', api_key: '', api_type: 'chat_completions' })
             showToast('success', t('settings.llm.addSuccess'))
         },
         onError: (e) => showToast('error', t('settings.llm.addFailed') + ': ' + e.message),
     })
 
     const updateProviderMutation = useMutation({
-        mutationFn: ({ id, data }: { id: number; data: { name: string; base_url: string; api_key: string } }) =>
+        mutationFn: ({ id, data }: { id: number; data: { name: string; base_url: string; api_key: string; api_type: string } }) =>
             updateLLMProvider(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['llm-providers'] })
             setEditingId(null)
-            setFormData({ name: '', base_url: '', api_key: '' })
+            setFormData({ name: '', base_url: '', api_key: '', api_type: 'chat_completions' })
             showToast('success', t('settings.llm.updateSuccess'))
         },
         onError: (e) => showToast('error', t('settings.llm.updateFailed') + ': ' + e.message),
@@ -101,9 +103,9 @@ export default function LLMTab() {
         onError: (e) => showToast('error', t('common.error') + ': ' + e.message),
     })
 
-    const handleEdit = (provider: { id: number; name: string; base_url: string; api_key?: string }) => {
+    const handleEdit = (provider: { id: number; name: string; base_url: string; api_key?: string; api_type?: string }) => {
         setEditingId(provider.id)
-        setFormData({ name: provider.name, base_url: provider.base_url, api_key: provider.api_key || '' })
+        setFormData({ name: provider.name, base_url: provider.base_url, api_key: provider.api_key || '', api_type: provider.api_type || 'chat_completions' })
         setShowForm(false)
         setShowApiKey(false)
     }
@@ -119,7 +121,7 @@ export default function LLMTab() {
     const handleCancelEdit = () => {
         setEditingId(null)
         setShowForm(false)
-        setFormData({ name: '', base_url: '', api_key: '' })
+        setFormData({ name: '', base_url: '', api_key: '', api_type: 'chat_completions' })
         setShowApiKey(false)
     }
 
@@ -155,6 +157,22 @@ export default function LLMTab() {
             return
         }
         updateModelMutation.mutate({ modelId, modelName: editModelName.trim() })
+    }
+
+    const handleTestModel = async (providerId: number, modelId: number) => {
+        setTestResults(prev => ({ ...prev, [modelId]: { loading: true } }))
+        try {
+            const result = await testLLMModel(providerId, modelId)
+            setTestResults(prev => ({ ...prev, [modelId]: { loading: false, ...result } }))
+            if (result.success) {
+                showToast('success', t('settings.llm.testSuccess', { ms: result.latency_ms }))
+            } else {
+                showToast('error', t('settings.llm.testFailed') + ': ' + result.message)
+            }
+        } catch (e: any) {
+            setTestResults(prev => ({ ...prev, [modelId]: { loading: false, success: false, message: e.message } }))
+            showToast('error', t('settings.llm.testFailed') + ': ' + e.message)
+        }
     }
 
     const isEditing = editingId !== null
@@ -210,6 +228,17 @@ export default function LLMTab() {
                             {showApiKey ? <Icons.EyeOff className="w-4 h-4" /> : <Icons.Eye className="w-4 h-4" />}
                         </button>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">{t('settings.llm.apiType')}</label>
+                        <select
+                            value={formData.api_type}
+                            onChange={(e) => setFormData({ ...formData, api_type: e.target.value })}
+                            className="flex-1 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm"
+                        >
+                            <option value="chat_completions">{t('settings.llm.apiTypeChatCompletions')}</option>
+                            <option value="responses">{t('settings.llm.apiTypeResponses')}</option>
+                        </select>
+                    </div>
                     <div className="flex gap-2 justify-end">
                         <button
                             onClick={handleCancelEdit}
@@ -253,7 +282,12 @@ export default function LLMTab() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="text-xs text-[var(--color-text-muted)] mb-3">{provider.base_url}</div>
+                            <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] mb-3">
+                                <span>{provider.base_url}</span>
+                                <span className="px-1.5 py-0.5 rounded bg-[var(--color-border)] text-[10px] font-mono">
+                                    {provider.api_type === 'responses' ? 'Responses' : 'Chat Completions'}
+                                </span>
+                            </div>
                             <div className="flex flex-wrap gap-2 items-center">
                                 {provider.models.filter((m: any) => !hiddenModels.has(m.id)).map((model: any) => (
                                     <div key={model.id} className="group relative">
@@ -278,9 +312,14 @@ export default function LLMTab() {
                                                     }`}>
                                                     <button
                                                         onClick={() => activateModelMutation.mutate(model.id)}
-                                                        className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center justify-center`}
+                                                        className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center justify-center gap-1`}
                                                     >
                                                         {model.model_name || model.name} {Boolean(model.is_active) && '✓'}
+                                                        {!model.is_active && testResults[model.id] && !testResults[model.id]?.loading && (
+                                                            testResults[model.id]?.success
+                                                                ? <Icons.Check className="w-3 h-3 text-green-400" />
+                                                                : <Icons.XCircle className="w-3 h-3 text-red-400" />
+                                                        )}
                                                     </button>
                                                     {!model.is_active && (
                                                         <div className="flex items-center pr-1 max-w-0 overflow-hidden opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 transition-all duration-200">
@@ -304,6 +343,20 @@ export default function LLMTab() {
                                                                 title={t('settings.llm.deleteModel')}
                                                             >
                                                                 <Icons.X className="w-3 h-3" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleTestModel(provider.id, model.id)
+                                                                }}
+                                                                disabled={testResults[model.id]?.loading}
+                                                                className="p-1 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
+                                                                title={t('settings.llm.testConnection')}
+                                                            >
+                                                                {testResults[model.id]?.loading
+                                                                    ? <Icons.Loader className="w-3 h-3 animate-spin" />
+                                                                    : <Icons.Zap className="w-3 h-3" />
+                                                                }
                                                             </button>
                                                         </div>
                                                     )}

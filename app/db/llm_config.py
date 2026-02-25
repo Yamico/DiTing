@@ -25,22 +25,22 @@ def get_all_providers(include_models=False):
     return providers
 
 
-def add_provider(name, base_url, api_key):
+def add_provider(name, base_url, api_key, api_type='chat_completions'):
     """Add a new LLM provider."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO llm_providers (name, base_url, api_key) VALUES (?, ?, ?)", (name, base_url, api_key))
+    cursor.execute("INSERT INTO llm_providers (name, base_url, api_key, api_type) VALUES (?, ?, ?, ?)", (name, base_url, api_key, api_type))
     pid = cursor.lastrowid
     conn.commit()
     conn.close()
     return pid
 
 
-def update_provider(pid, name, base_url, api_key):
+def update_provider(pid, name, base_url, api_key, api_type='chat_completions'):
     """Update an LLM provider."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE llm_providers SET name=?, base_url=?, api_key=? WHERE id=?", (name, base_url, api_key, pid))
+    cursor.execute("UPDATE llm_providers SET name=?, base_url=?, api_key=?, api_type=? WHERE id=?", (name, base_url, api_key, api_type, pid))
     conn.commit()
     conn.close()
 
@@ -98,7 +98,7 @@ def get_active_model_full():
     conn = get_connection_with_row()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT m.model_name, p.base_url, p.api_key, p.name as provider_name 
+        SELECT m.model_name, p.base_url, p.api_key, p.name as provider_name, p.api_type 
         FROM llm_models m 
         JOIN llm_providers p ON m.provider_id = p.id 
         WHERE m.is_active = 1 LIMIT 1
@@ -113,7 +113,7 @@ def get_llm_model_full_by_id(model_id):
     conn = get_connection_with_row()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT m.model_name, p.base_url, p.api_key, p.name as provider_name 
+        SELECT m.model_name, p.base_url, p.api_key, p.name as provider_name, p.api_type 
         FROM llm_models m 
         JOIN llm_providers p ON m.provider_id = p.id 
         WHERE m.id = ?
