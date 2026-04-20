@@ -136,7 +136,7 @@ async def analyze_text(text: str, prompt: str, llm_model_id: int = None):
         return f"❌ LLM Error: {str(e)}", model
 
 
-def create_analysis_stream(text: str, prompt: str, llm_model_id: int = None, messages_override: list = None):
+def create_analysis_stream(text: str, prompt: str, llm_model_id: int = None, messages_override=None):
     """
     Set up streaming LLM analysis.
     Returns (model_name, async_generator_of_text_chunks).
@@ -213,17 +213,20 @@ def create_analysis_stream(text: str, prompt: str, llm_model_id: int = None, mes
 
     async def _stream():
         if api_type == 'responses':
-            # responses API: extract system from first message if present
             instructions = sys_prompt
             inp = user_content
             if messages_override:
-                sys_msgs = [m for m in messages_override if m["role"] == "system"]
-                instructions = sys_msgs[0]["content"] if sys_msgs else ""
-                non_sys = [m for m in messages_override if m["role"] != "system"]
-                inp = non_sys[-1]["content"] if non_sys else ""
+                if isinstance(messages_override, dict):
+                    instructions = messages_override.get("instructions", "")
+                    inp = messages_override.get("input", [])
+                else:
+                    sys_msgs = [m for m in messages_override if m["role"] == "system"]
+                    instructions = sys_msgs[0]["content"] if sys_msgs else ""
+                    non_sys = [m for m in messages_override if m["role"] != "system"]
+                    inp = non_sys[-1]["content"] if non_sys else ""
             stream = await client.responses.create(
                 model=model,
-                instructions=instructions,
+                instructions=instructions or None,
                 input=inp,
                 temperature=0.7,
                 stream=True

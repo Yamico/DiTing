@@ -1,19 +1,12 @@
 """
-Database Migrations Module
-Manages schema versioning using semantic version strings.
-
-Flow:
-  1. Fresh install       → create_all() + seed_all() → stamp CURRENT_VERSION
-  2. Old integer version → schema already correct → re-stamp to CURRENT_VERSION
-  3. Current version     → no-op
+Database migrations and initialization helpers.
 """
-from app.db.connection import get_connection
+from app.core.config import APP_VERSION
+from app.core.logger import logger
 from app.db import schema as db_schema
 from app.db import seed as db_seed
-from app.core.logger import logger
-from app.core.config import APP_VERSION
+from app.db.connection import get_connection
 
-# --- Migration Configuration ---
 CURRENT_VERSION = APP_VERSION
 
 
@@ -26,53 +19,42 @@ def init_db():
         state = _detect_state(cursor)
 
         if state == "fresh":
-            logger.info("🆕 Fresh install detected — creating all tables...")
+            logger.info(f"Fresh install detected, creating schema at v{CURRENT_VERSION}")
             db_schema.create_all(cursor)
             db_seed.seed_all(cursor)
             _set_version(cursor, CURRENT_VERSION)
-            logger.info(f"✅ Database initialized at v{CURRENT_VERSION}.")
 
         elif state == "legacy_integer":
-            # Existing database with old integer version (≤18).
-            # Run create_all (IF NOT EXISTS) to pick up any new tables, then re-stamp version.
             old_ver = _get_legacy_int_version(cursor)
-            logger.info(f"⬆️ Database at v{old_ver} (legacy integer), upgrading to v{CURRENT_VERSION}...")
+            logger.info(f"Upgrading legacy integer schema v{old_ver} -> v{CURRENT_VERSION}")
             _upgrade_version_column(cursor)
             db_schema.create_all(cursor)
             _set_version(cursor, CURRENT_VERSION)
-            logger.info(f"✅ Upgraded to v{CURRENT_VERSION}.")
 
-        else:  # versioned (semver string)
+        else:
             current = _get_version(cursor)
             if current != CURRENT_VERSION:
-                logger.info(f"⬆️ Database at v{current}, upgrading to v{CURRENT_VERSION}...")
-                
-                # Migrations from v0.12.0 -> 0.12.1
+                logger.info(f"Upgrading schema v{current} -> v{CURRENT_VERSION}")
+
                 if current == "0.12.0":
-                    logger.info("  -> Adding use_count column to prompts table")
                     cursor.execute("ALTER TABLE prompts ADD COLUMN use_count INTEGER DEFAULT 0")
                     current = "0.12.1"
 
-                # Migrations from v0.12.1 -> 0.12.2
                 if current == "0.12.1":
-                    logger.info("  -> Adding api_type column to llm_providers table")
                     cursor.execute("ALTER TABLE llm_providers ADD COLUMN api_type TEXT DEFAULT 'chat_completions'")
                     current = "0.12.2"
 
-                # Migrations from v0.12.2 -> 0.12.3
                 if current == "0.12.2":
-                    logger.info("  -> Dropping legacy columns from transcriptions table (ai_summary, user_prompt, llm_model)")
                     for col in ("ai_summary", "user_prompt", "llm_model"):
                         try:
                             cursor.execute(f"ALTER TABLE transcriptions DROP COLUMN {col}")
-                        except Exception as e:
-                            logger.warning(f"  -> Column {col} may not exist, skipping: {e}")
+                        except Exception as exc:
+                            logger.warning(f"Skipping missing transcriptions.{col}: {exc}")
                     current = "0.12.3"
 
-                # Migrations from v0.12.3 -> 0.12.4
                 if current == "0.12.3":
-                    logger.info("  -> Creating video_notes table for AI-generated whole-video notes")
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS video_notes (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             source_id TEXT NOT NULL,
@@ -89,23 +71,20 @@ def init_db():
                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             FOREIGN KEY (source_id) REFERENCES video_meta (source_id) ON DELETE CASCADE
                         )
-                    ''')
+                        """
+                    )
                     current = "0.12.4"
 
-                # Always ensure gen_params column exists (added post-0.12.4)
                 try:
                     cursor.execute("ALTER TABLE video_notes ADD COLUMN gen_params TEXT")
-                    logger.info("  -> Added gen_params column to video_notes")
                 except Exception:
-                    pass  # Column already exists
+                    pass
 
-                # Ensure QA tables exist (v0.13.1+)
                 db_schema.create_all(cursor)
-
                 _set_version(cursor, CURRENT_VERSION)
-                logger.info(f"✅ Upgraded to v{CURRENT_VERSION}.")
             else:
-                logger.info(f"✅ Database schema is up-to-date (v{current}).")
+                # Even on current versions, create_all keeps brand-new optional tables in sync.
+                db_schema.create_all(cursor)
 
         conn.commit()
     except Exception:
@@ -115,23 +94,11 @@ def init_db():
         conn.close()
 
 
-# ---------------------------------------------------------------------------
-# State detection helpers
-# ---------------------------------------------------------------------------
-
 def _detect_state(cursor) -> str:
-    """
-    Detect database state.
-    Returns:
-      'fresh'           — no tables at all (brand-new database)
-      'legacy_integer'  — schema_version exists with INTEGER version column
-      'versioned'       — schema_version exists with TEXT/semver version
-    """
     cursor.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
     )
     if cursor.fetchone():
-        # Check if version is integer or text
         cursor.execute("SELECT version FROM schema_version WHERE key = 'version'")
         row = cursor.fetchone()
         if row:
@@ -140,10 +107,8 @@ def _detect_state(cursor) -> str:
                 return "legacy_integer"
             except (ValueError, TypeError):
                 return "versioned"
-        # Table exists but no row — treat as legacy
         return "legacy_integer"
 
-    # Check if any application table exists (pre-version-tracking era)
     cursor.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='transcriptions'"
     )
@@ -171,20 +136,17 @@ def _get_legacy_int_version(cursor) -> int:
 def _set_version(cursor, version: str):
     cursor.execute(
         "INSERT OR REPLACE INTO schema_version (key, version) VALUES ('version', ?)",
-        (version,)
+        (version,),
     )
 
 
 def _upgrade_version_column(cursor):
-    """
-    Upgrade schema_version table from INTEGER version to TEXT version.
-    SQLite stores values dynamically, so we just need to ensure the table
-    schema uses TEXT. We rebuild the table to be clean.
-    """
     cursor.execute("DROP TABLE IF EXISTS schema_version")
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE schema_version (
             key TEXT PRIMARY KEY DEFAULT 'version',
             version TEXT NOT NULL
         )
-    ''')
+        """
+    )

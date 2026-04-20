@@ -15,6 +15,11 @@ import { useToast } from '../contexts/ToastContext'
 import Icons from './ui/Icons'
 import { preprocessLaTeX } from '../utils/markdown'
 import { useNoteStreamObserver } from '../hooks/useNoteStreamObserver'
+import {
+    loadPreferredLLMModelId,
+    resolvePreferredLLMModelId,
+    savePreferredLLMModelId,
+} from '../utils/preferredLLMModel'
 
 interface NoteViewProps {
     sourceId: string
@@ -688,6 +693,10 @@ export default function NoteView({
 
     const qkey = ['notes', sourceId]
     const hasSegments = segments.length > 0
+    const handleSelectedModelIdChange = useCallback((modelId: number | '') => {
+        setSelectedModelId(modelId)
+        savePreferredLLMModelId(localStorage, modelId)
+    }, [])
 
     // Auto-select initial transcription version
     useEffect(() => {
@@ -715,14 +724,18 @@ export default function NoteView({
 
     const activeNote = notes.find(n => n.is_active) ?? notes[0] ?? null
 
-    // Auto-select active model when providers load
     useEffect(() => {
-        if (selectedModelId === '' && providers.length > 0) {
-            const models = providers.flatMap(p => p.models ?? [])
-            const active = models.find(m => m.is_active)
-            if (active) setSelectedModelId(active.id)
+        if (providers.length === 0) return
+
+        const storedModelId = loadPreferredLLMModelId(localStorage)
+        const resolution = resolvePreferredLLMModelId(providers, storedModelId)
+
+        if (resolution.shouldClearStoredPreference) {
+            savePreferredLLMModelId(localStorage, '')
         }
-    }, [providers, selectedModelId])
+
+        setSelectedModelId(prev => prev === resolution.selectedModelId ? prev : resolution.selectedModelId)
+    }, [providers])
 
     // Sync edit buffer
     useEffect(() => {
@@ -1556,7 +1569,7 @@ export default function NoteView({
                     style={style}
                     setStyle={setStyle}
                     selectedModelId={selectedModelId}
-                    setSelectedModelId={setSelectedModelId}
+                    setSelectedModelId={handleSelectedModelIdChange}
                     screenshotDensity={screenshotDensity}
                     setScreenshotDensity={setScreenshotDensity}
                     segments={segments}

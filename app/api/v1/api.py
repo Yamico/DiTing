@@ -20,13 +20,14 @@ api_router.include_router(settings.router, prefix="")     # /api/settings/* (new
 api_router.include_router(search.router, prefix="")       # /api/search
 api_router.include_router(cache.router, prefix="")        # /api/cache/*
 api_router.include_router(upload.router, prefix="")       # /api/upload/*
-from app.api.v1.endpoints import asr, tags, notes, note_screenshots
+from app.api.v1.endpoints import asr, tags, notes, note_screenshots, qa_attachments
 api_router.include_router(asr.router, prefix="/asr")      # /api/asr/status, /api/asr/config
 api_router.include_router(asr_workers.router, prefix="/asr")      # /api/asr/workers endpoints
 api_router.include_router(wizard.router, prefix="/wizard")      # /api/wizard endpoints
 api_router.include_router(tags.router, prefix="")         # /api/tags, /api/videos/{id}/tags
 api_router.include_router(notes.router, prefix="")        # /api/notes/*
 api_router.include_router(note_screenshots.router, prefix="")  # /api/note-screenshots/*
+api_router.include_router(qa_attachments.router, prefix="")  # /api/qa/attachments/*
 from app.api.v1.endpoints import qa
 api_router.include_router(qa.router, prefix="")            # /api/qa/*
 

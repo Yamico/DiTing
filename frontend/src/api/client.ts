@@ -788,7 +788,36 @@ export async function deleteQAMessage(messageId: number): Promise<void> {
     await fetchJson(`${API_BASE}/qa/messages/${messageId}`, { method: 'DELETE' })
 }
 
-export async function askQuestion(conversationId: number, question: string, llmModelId?: number): Promise<{ task_id: number }> {
+export async function askQuestion(
+    conversationId: number,
+    question: string,
+    llmModelId?: number,
+    imageFiles?: File[]
+): Promise<{ task_id: number }> {
+    if (imageFiles && imageFiles.length > 0) {
+        const form = new FormData()
+        form.append('conversation_id', String(conversationId))
+        form.append('question', question)
+        if (llmModelId !== undefined) {
+            form.append('llm_model_id', String(llmModelId))
+        }
+        for (const imageFile of imageFiles) {
+            form.append('images', imageFile, imageFile.name || 'pasted-image.png')
+        }
+
+        const response = await fetch(`${API_BASE}/qa/ask`, {
+            method: 'POST',
+            body: form,
+        })
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+            throw new Error(error.detail || `HTTP ${response.status}`)
+        }
+
+        return response.json()
+    }
+
     return fetchJson(`${API_BASE}/qa/ask`, {
         method: 'POST',
         body: JSON.stringify({ conversation_id: conversationId, question, llm_model_id: llmModelId }),

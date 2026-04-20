@@ -13,6 +13,11 @@ import type { RefineContext } from './SegmentCard'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 import { useTranslation } from 'react-i18next'
 import { useStreamingStore } from '../stores/useStreamingStore'
+import {
+    loadPreferredLLMModelId,
+    resolvePreferredLLMModelId,
+    savePreferredLLMModelId,
+} from '../utils/preferredLLMModel'
 
 interface AISummaryModalProps {
     isOpen: boolean
@@ -82,18 +87,18 @@ export default function AISummaryModal({ isOpen, onClose, segment, refineContext
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['prompts'] })
     })
 
-    // Computed
-    const modelOptions = useMemo(() => providers.flatMap(p =>
-        p.models.map(m => ({ id: m.id, name: m.model_name, provider: p.name, is_active: m.is_active }))
-    ), [providers])
+    useEffect(() => {
+        if (!isOpen || providers.length === 0) return
 
-    // Set default model
-    useMemo(() => {
-        if (isOpen && selectedModelId === '' && modelOptions.length > 0) {
-            const active = modelOptions.find(m => m.is_active)
-            if (active) setSelectedModelId(active.id)
+        const storedModelId = loadPreferredLLMModelId(localStorage)
+        const resolution = resolvePreferredLLMModelId(providers, storedModelId)
+
+        if (resolution.shouldClearStoredPreference) {
+            savePreferredLLMModelId(localStorage, '')
         }
-    }, [isOpen, modelOptions, selectedModelId])
+
+        setSelectedModelId(prev => prev === resolution.selectedModelId ? prev : resolution.selectedModelId)
+    }, [isOpen, providers])
 
     const filteredPrompts = useMemo(() => {
         return prompts.filter(p => {
@@ -141,6 +146,12 @@ export default function AISummaryModal({ isOpen, onClose, segment, refineContext
 
     const handleDeletePrompt = (id: number, name: string) => {
         showUndoableDelete(`${t('common.delete')} "${name}"?`, async () => deletePromptMutation.mutateAsync(id))
+    }
+
+    const handleModelChange = (value: string) => {
+        const nextModelId: number | '' = value ? Number(value) : ''
+        setSelectedModelId(nextModelId)
+        savePreferredLLMModelId(localStorage, nextModelId)
     }
 
     if (!isOpen) return null
@@ -267,7 +278,7 @@ export default function AISummaryModal({ isOpen, onClose, segment, refineContext
 
                     <div className="w-full md:flex-1 md:min-w-[200px] space-y-1">
                         <label className="text-xs text-[var(--color-text-muted)] block">{t('aiSummaryModal.modelSelection')}</label>
-                        <select value={selectedModelId} onChange={e => setSelectedModelId(e.target.value ? Number(e.target.value) : '')} className="w-full p-2 text-sm bg-[var(--color-card)] border border-[var(--color-border)] rounded focus:border-[var(--color-primary)]">
+                        <select value={selectedModelId} onChange={e => handleModelChange(e.target.value)} className="w-full p-2 text-sm bg-[var(--color-card)] border border-[var(--color-border)] rounded focus:border-[var(--color-primary)]">
                             <option value="">{t('aiSummaryModal.defaultModel')}</option>
                             {providers.map(p => (
                                 <optgroup key={p.id} label={p.name}>{p.models?.map(m => <option key={m.id} value={m.id}>{m.model_name}</option>)}</optgroup>

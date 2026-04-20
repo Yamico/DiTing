@@ -108,6 +108,13 @@ export interface QAConversation {
     updated_at: string
 }
 
+export interface QAAttachment {
+    id: number
+    filename: string
+    mime_type: string
+    url: string
+}
+
 export interface QAMessage {
     id: number
     conversation_id: number
@@ -116,6 +123,7 @@ export interface QAMessage {
     model: string | null
     response_time: number | null
     created_at: string
+    attachments?: QAAttachment[]
 }
 
 // Pagination

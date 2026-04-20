@@ -500,7 +500,7 @@ def tray_thread_func():
 
 # --- Entry Point ---
 if __name__ == "__main__":
-    print("🚀 Launcher Starting...")
+    print("Launcher Starting...")
 
     start_main_server()
 

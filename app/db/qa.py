@@ -1,11 +1,10 @@
 """
-QA Conversations Database Operations
-CRUD operations for qa_conversations and qa_messages tables.
+QA conversations and message persistence helpers.
 """
+from collections import defaultdict
+
 from app.db.connection import get_connection, get_connection_with_row
 
-
-# --- Conversations ---
 
 def create_conversation(source_id: str, title: str = None, llm_model_id: int = None) -> int:
     conn = get_connection()
@@ -90,8 +89,6 @@ def count_conversations_by_source(source_id: str) -> int:
     return count
 
 
-# --- Messages ---
-
 def add_message(conversation_id: int, role: str, content: str, model: str = None, response_time: float = None) -> int:
     conn = get_connection()
     cursor = conn.cursor()
@@ -109,12 +106,51 @@ def get_messages(conversation_id: int) -> list:
     conn = get_connection_with_row()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM qa_messages WHERE conversation_id = ? ORDER BY created_at ASC",
+        "SELECT * FROM qa_messages WHERE conversation_id = ? ORDER BY created_at ASC, id ASC",
         (conversation_id,),
     )
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+
+def _get_attachments_by_message_ids(message_ids: list[int]) -> dict[int, list[dict]]:
+    if not message_ids:
+        return {}
+
+    conn = get_connection_with_row()
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in message_ids)
+    cursor.execute(
+        f"""
+        SELECT *
+        FROM qa_message_attachments
+        WHERE message_id IN ({placeholders})
+        ORDER BY id ASC
+        """,
+        tuple(message_ids),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    attachments_by_message: dict[int, list[dict]] = defaultdict(list)
+    for row in rows:
+        row_dict = dict(row)
+        attachments_by_message[row_dict["message_id"]].append(row_dict)
+    return attachments_by_message
+
+
+def get_messages_with_attachments(conversation_id: int) -> list[dict]:
+    rows = get_messages(conversation_id)
+    message_ids = [dict(row)["id"] for row in rows]
+    attachments_by_message = _get_attachments_by_message_ids(message_ids)
+
+    messages = []
+    for row in rows:
+        row_dict = dict(row)
+        row_dict["attachments"] = attachments_by_message.get(row_dict["id"], [])
+        messages.append(row_dict)
+    return messages
 
 
 def get_message(message_id: int):
@@ -143,3 +179,58 @@ def delete_message(message_id: int):
     cursor.execute("DELETE FROM qa_messages WHERE id = ?", (message_id,))
     conn.commit()
     conn.close()
+
+
+def add_message_attachment(message_id: int, filename: str, file_path: str, mime_type: str) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO qa_message_attachments (message_id, filename, file_path, mime_type)
+        VALUES (?, ?, ?, ?)
+        """,
+        (message_id, filename, file_path, mime_type),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return new_id
+
+
+def get_message_attachment(attachment_id: int):
+    conn = get_connection_with_row()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM qa_message_attachments WHERE id = ?", (attachment_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+
+def get_message_attachments(message_id: int) -> list:
+    conn = get_connection_with_row()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM qa_message_attachments WHERE message_id = ? ORDER BY id ASC",
+        (message_id,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def get_attachments_for_conversation(conversation_id: int) -> list:
+    conn = get_connection_with_row()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT a.*
+        FROM qa_message_attachments a
+        INNER JOIN qa_messages m ON m.id = a.message_id
+        WHERE m.conversation_id = ?
+        ORDER BY a.id ASC
+        """,
+        (conversation_id,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
