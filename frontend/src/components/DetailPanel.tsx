@@ -40,6 +40,9 @@ export default function DetailPanel({ video, onClose, onRefresh }: DetailPanelPr
     // Get origin link based on source type
     const getOriginLink = () => {
         if (video.original_source) return video.original_source
+        // Backend returns the original URL under `source` when it's an http(s) link.
+        // For XHS this preserves the xsec_token needed for non-logged-in viewers.
+        if (video.source && /^https?:\/\//.test(video.source)) return video.source
 
         switch (video.source_type) {
             case 'bilibili': {
