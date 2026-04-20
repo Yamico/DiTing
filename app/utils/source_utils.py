@@ -8,21 +8,25 @@ def infer_source_type(source_id: str) -> str:
     Infer the source type from a normalized source_id or raw string.
     
     Returns:
-        'bilibili', 'youtube', 'douyin', 'network', 'file', or 'unknown'
+        'bilibili', 'youtube', 'douyin', 'xiaohongshu', 'network', 'file', or 'unknown'
     """
     if not source_id:
         return 'unknown'
-        
+
     s = source_id.strip()
-    
+
     # Bilibili
     if s.startswith("BV") or "bilibili.com" in s or "b23.tv" in s:
         return 'bilibili'
-        
+
     # Douyin (prefix or domain, including share text)
     if s.startswith("dy_") or "douyin.com" in s or "v.douyin.com" in s:
         return 'douyin'
-        
+
+    # Xiaohongshu (prefix or domain)
+    if s.startswith("xhs_") or "xiaohongshu.com" in s or "xhslink.com" in s:
+        return 'xiaohongshu'
+
     # Network (prefix)
     if s.startswith("net_"):
         return 'network'
@@ -61,7 +65,7 @@ def normalize_source_id(raw_source: str, source_type: str = 'auto') -> str:
     
     # 0. Check for existing normalized prefixes (Idempotency)
     # Bilibili is special because it starts with BV, handled below.
-    if raw_source.startswith("dy_") or raw_source.startswith("net_") or raw_source.startswith("file_"):
+    if raw_source.startswith("dy_") or raw_source.startswith("xhs_") or raw_source.startswith("net_") or raw_source.startswith("file_"):
         return raw_source
     
     # 1. Bilibili (BV ID)
@@ -112,6 +116,13 @@ def normalize_source_id(raw_source: str, source_type: str = 'auto') -> str:
     if re.match(r"^\d{15,}$", raw_source):
          return f"dy_{raw_source}"
 
+    # 3.5 Xiaohongshu (note hex ID)
+    xhs_url_in_text = re.search(r"https?://[^\s]*(?:xiaohongshu\.com|xhslink\.com)[^\s]*", raw_source)
+    xhs_input = xhs_url_in_text.group(0) if xhs_url_in_text else raw_source
+    xhs_match = re.search(r"/(?:discovery/item|explore|item)/([0-9a-fA-F]{16,})", xhs_input)
+    if xhs_match:
+        return f"xhs_{xhs_match.group(1)}"
+
     # 4. Fallback Hashing for everything else
     # Use MD5 short hash (8 chars)
     hash_digest = hashlib.md5(raw_source.encode('utf-8')).hexdigest()[:8]
@@ -122,7 +133,9 @@ def normalize_source_id(raw_source: str, source_type: str = 'auto') -> str:
         inferred_type = infer_source_type(raw_source)
     
     if inferred_type == 'douyin':
-        return f"dy_{hash_digest}" 
+        return f"dy_{hash_digest}"
+    elif inferred_type == 'xiaohongshu':
+        return f"xhs_{hash_digest}"
     elif inferred_type == 'file' or raw_source.startswith("C:") or raw_source.startswith("/") or "\\" in raw_source:
         return f"file_{hash_digest}"
     else:
@@ -151,7 +164,7 @@ def reconstruct_url(source_id: str, original_source: str = None) -> str:
          # Likely YouTube
          return f"https://www.youtube.com/watch?v={source_id}"
          
-    # For others (dy_, net_, file_), we can't reconstruct without original_source
+    # For others (dy_, xhs_, net_, file_), we can't reconstruct without original_source
     # Return the ID itself as a fallback or empty string
     return ""
 
@@ -216,6 +229,38 @@ def resolve_douyin_url(url: str) -> str:
             }
         )
         if resp.url and "douyin.com" in resp.url:
+            return resp.url
+    except Exception:
+        pass
+
+    return extracted
+
+
+def resolve_xhs_url(raw_input: str) -> str:
+    """
+    Resolve a Xiaohongshu share text / short link to the canonical URL.
+    Handles share text like "3 【...】 😆 xxx 😆 https://www.xiaohongshu.com/..."
+    and xhslink.com short links.
+    Returns the resolved URL, or the original input if resolution fails.
+    """
+    if not raw_input:
+        return raw_input
+
+    url_match = re.search(r"https?://[^\s]+", raw_input)
+    extracted = url_match.group(0) if url_match else raw_input.strip()
+
+    if "xhslink.com" not in extracted:
+        return extracted
+
+    try:
+        import requests
+        resp = requests.head(
+            extracted,
+            allow_redirects=True,
+            timeout=5,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}
+        )
+        if resp.url and "xiaohongshu.com" in resp.url:
             return resp.url
     except Exception:
         pass

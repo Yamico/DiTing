@@ -16,6 +16,7 @@ from app.schemas.transcribe import (
     TranscribeNetworkRequest,
     TranscribeFileRequest,
     TranscribeDouyinRequest,
+    TranscribeXiaohongshuRequest,
     RetranscribeRequest,
     TranscribeResponse,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "TranscribeNetworkRequest",
     "TranscribeFileRequest",
     "TranscribeDouyinRequest",
+    "TranscribeXiaohongshuRequest",
     "RetranscribeRequest",
     "TranscribeResponse",
     # Video

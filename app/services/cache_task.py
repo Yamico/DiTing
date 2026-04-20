@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.downloaders.bilibili import download_bilibili_video, download_audio, get_video_info
 from app.downloaders.youtube import download_youtube_media, download_youtube_video, get_youtube_info
 from app.downloaders.douyin import download_douyin_video, get_douyin_info, pick_douyin_quality_url
+from app.downloaders.xiaohongshu import download_xhs_video, get_xhs_info
 from app.api.v1.endpoints.covers import download_and_cache_cover
 
 async def process_cache_task(
@@ -159,7 +160,33 @@ async def process_cache_task(
                 download_progress.get_callback()
             )
             media_quality_tag = quality
-            
+
+        elif source_type == 'xiaohongshu':
+            direct_url = url
+            if 'xhscdn.com' not in url:
+                task_manager.update_progress(transcription_id, 5, "Resolving Xiaohongshu note...")
+                info = await get_xhs_info(url)
+                if info and info.get("direct_url"):
+                    direct_url = info["direct_url"]
+                    cover = info.get("cover", "")
+                    if cover and (cover.startswith('http') or cover.startswith('//')):
+                        cover = await run_in_threadpool(download_and_cache_cover, cover)
+                    upsert_video_meta(source_id, video_title=info.get("title"), video_cover=cover, stream_url=direct_url)
+                else:
+                    raise Exception("Failed to resolve Xiaohongshu video info")
+            else:
+                upsert_video_meta(source_id, stream_url=direct_url)
+
+            download_path = await run_in_threadpool(
+                download_xhs_video,
+                direct_url,
+                "https://www.xiaohongshu.com/",
+                transcription_id,
+                check_cancel_wrapper,
+                download_progress.get_callback()
+            )
+            media_quality_tag = quality
+
         else:
              # Network / Generic
              # TODO: Implement generic download

@@ -51,7 +51,7 @@ export default function DashboardFilterBar({
         <div className="space-y-3">
             {/* Source Tabs */}
             <div className="flex flex-wrap gap-2 items-center">
-                {['', 'bilibili', 'youtube', 'douyin', 'network', 'file'].map((type) => (
+                {['', 'bilibili', 'youtube', 'douyin', 'xiaohongshu', 'network', 'file'].map((type) => (
                     <button
                         key={type}
                         onClick={() => onUpdateFilter({ source: type || null })}

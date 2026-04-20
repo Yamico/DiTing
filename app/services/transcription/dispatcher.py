@@ -21,6 +21,7 @@ from app.services.transcription import (
     process_bilibili_transcription,
     process_youtube_transcription,
     process_douyin_transcription,
+    process_xiaohongshu_transcription,
     process_network_transcription,
     process_file_transcription
 )
@@ -120,12 +121,13 @@ async def create_and_dispatch(
         # Identify if the incoming title is a generic fallback or empty
         is_generic = (not title) or \
                      title.startswith("Douyin ") or \
+                     title.startswith("XHS ") or \
                      title.startswith("YouTube ") or \
                      title.startswith("网络媒体 ") or \
                      title == "未知来源"
-                     
+
         # If new is generic but old is rich, preserve old!
-        if is_generic and old_title and not (old_title.startswith("Douyin ") or old_title.startswith("YouTube ") or old_title == "未知来源"):
+        if is_generic and old_title and not (old_title.startswith("Douyin ") or old_title.startswith("XHS ") or old_title.startswith("YouTube ") or old_title == "未知来源"):
             logger.info(f"🛡️ Preserving rich video_title against generic overwrite for {normalized_source}")
             title = old_title
             
@@ -171,7 +173,7 @@ async def create_and_dispatch(
         background_tasks.add_task(
             process_cache_task,
             transcription_id,
-            original_source if source_type != 'douyin' else (direct_url or stream_url),
+            original_source if source_type not in ('douyin', 'xiaohongshu') else (direct_url or stream_url or original_source),
             normalized_source,
             source_type,
             quality
@@ -234,6 +236,21 @@ async def create_and_dispatch(
         # Douyin requires direct_url
         background_tasks.add_task(
             process_douyin_transcription,
+            transcription_id,
+            direct_url,
+            task_type,
+            output_format,
+            source_id=normalized_source,
+            local_file_path=local_file_path,
+            only_get_subtitles=only_get_subtitles,
+            force_transcription=force_transcription,
+            auto_analyze_prompt=auto_analyze_prompt,
+            auto_analyze_prompt_id=auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+        )
+    elif source_type == 'xiaohongshu':
+        background_tasks.add_task(
+            process_xiaohongshu_transcription,
             transcription_id,
             direct_url,
             task_type,

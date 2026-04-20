@@ -21,6 +21,7 @@ export default function VideoListItem({ video, onOpenPanel, selectionMode = fals
         bilibili: { label: t('videoCard.source.bilibili'), bg: 'bg-pink-500/20', color: 'text-pink-400' },
         youtube: { label: t('videoCard.source.youtube'), bg: 'bg-red-600/20', color: 'text-red-400' },
         douyin: { label: t('videoCard.source.douyin'), bg: 'bg-cyan-500/20', color: 'text-cyan-400' },
+        xiaohongshu: { label: t('videoCard.source.xiaohongshu'), bg: 'bg-red-500/20', color: 'text-red-400' },
         network: { label: t('videoCard.source.network'), bg: 'bg-orange-500/20', color: 'text-orange-400' },
         video: { label: t('videoCard.source.video'), bg: 'bg-blue-500/20', color: 'text-blue-400' },
         audio: { label: t('videoCard.source.audio'), bg: 'bg-purple-500/20', color: 'text-purple-400' },

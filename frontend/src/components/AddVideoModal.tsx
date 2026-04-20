@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { transcribeBilibili, transcribeYoutube, transcribeDouyin, transcribeNetwork, getPrompts } from '../api'
+import { transcribeBilibili, transcribeYoutube, transcribeDouyin, transcribeXiaohongshu, transcribeNetwork, getPrompts } from '../api'
 import type { Prompt } from '../api/types'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 import { useTranscriptionPrefs } from '../hooks/useTranscriptionPrefs'
@@ -15,7 +15,7 @@ interface AddVideoModalProps {
 const MEDIA_EXTENSIONS = ['.mp4', '.mp3', '.wav', '.m4a', '.webm', '.ogg', '.flac', '.aac']
 
 // URL pattern matching with B站短链接支持
-function detectPlatform(url: string): 'bilibili' | 'youtube' | 'douyin' | 'network' | null {
+function detectPlatform(url: string): 'bilibili' | 'youtube' | 'douyin' | 'xiaohongshu' | 'network' | null {
     url = url.trim()
 
     // Check for direct media URLs first
@@ -28,6 +28,11 @@ function detectPlatform(url: string): 'bilibili' | 'youtube' | 'douyin' | 'netwo
 
     // Douyin CDN direct links (treated as network, not douyin)
     if (urlLower.includes('douyin.com/aweme/v1/play') || urlLower.includes('bytecdn.cn')) {
+        return 'network'
+    }
+
+    // Xiaohongshu CDN direct links (treated as network)
+    if (urlLower.includes('xhscdn.com')) {
         return 'network'
     }
 
@@ -46,9 +51,14 @@ function detectPlatform(url: string): 'bilibili' | 'youtube' | 'douyin' | 'netwo
         return 'douyin'
     }
 
+    // Xiaohongshu page links
+    if (url.includes('xiaohongshu.com') || url.includes('xhslink.com')) {
+        return 'xiaohongshu'
+    }
+
     // Generic HTTP/HTTPS media URL heuristic
     if ((url.startsWith('http://') || url.startsWith('https://')) &&
-        !url.includes('bilibili') && !url.includes('youtube') && !url.includes('douyin')) {
+        !url.includes('bilibili') && !url.includes('youtube') && !url.includes('douyin') && !url.includes('xiaohongshu')) {
         // Assume it's a direct media link
         return 'network'
     }
@@ -97,6 +107,12 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
         // Douyin full link (www.douyin.com/video/xxx)
         const dyFullMatch = text.match(/https?:\/\/(?:www\.)?douyin\.com\/video\/\d+\/?/)
         if (dyFullMatch) return dyFullMatch[0]
+        // Xiaohongshu short link (xhslink.com/xxx)
+        const xhsShortMatch = text.match(/https?:\/\/(?:www\.)?xhslink\.com\/[a-zA-Z0-9/]+/)
+        if (xhsShortMatch) return xhsShortMatch[0]
+        // Xiaohongshu full link — keep query string (xsec_token matters)
+        const xhsFullMatch = text.match(/https?:\/\/(?:www\.)?xiaohongshu\.com\/(?:discovery\/item|explore|item)\/[a-fA-F0-9]+(?:\?[^\s]*)?/)
+        if (xhsFullMatch) return xhsFullMatch[0]
         return text.trim()
     }
 
@@ -201,6 +217,8 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                 await transcribeYoutube(request)
             } else if (platform === 'douyin') {
                 await transcribeDouyin(request)
+            } else if (platform === 'xiaohongshu') {
+                await transcribeXiaohongshu(request)
             } else if (platform === 'network') {
                 await transcribeNetwork(request)
             }
@@ -220,6 +238,7 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
             bilibili: { icon: '📺', name: t('dashboard.sourceType.bilibili'), color: 'bg-pink-500/20 text-pink-400' },
             youtube: { icon: '▶️', name: t('dashboard.sourceType.youtube'), color: 'bg-red-500/20 text-red-400' },
             douyin: { icon: '🎵', name: t('dashboard.sourceType.douyin'), color: 'bg-cyan-500/20 text-cyan-400' },
+            xiaohongshu: { icon: '📕', name: t('dashboard.sourceType.xiaohongshu'), color: 'bg-red-500/20 text-red-400' },
             network: { icon: '🌐', name: t('dashboard.sourceType.network'), color: 'bg-orange-500/20 text-orange-400' },
         }
         const b = badges[platform]

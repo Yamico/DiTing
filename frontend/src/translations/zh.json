@@ -39,6 +39,7 @@
             "bilibili": "B站",
             "youtube": "YouTube",
             "douyin": "抖音",
+            "xiaohongshu": "小红书",
             "network": "网络",
             "file": "本地文件"
         },
@@ -121,6 +122,7 @@
             "bilibili": "Bilibili",
             "youtube": "YouTube",
             "douyin": "抖音",
+            "xiaohongshu": "小红书",
             "video": "本地视频",
             "audio": "本地音频",
             "file": "本地文件"
@@ -442,6 +444,7 @@
             "bilibili": "B站",
             "youtube": "YouTube",
             "douyin": "抖音",
+            "xiaohongshu": "小红书",
             "network": "网络",
             "video": "本地视频",
             "audio": "本地音频",

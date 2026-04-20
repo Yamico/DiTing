@@ -8,6 +8,7 @@ from app.services.transcription.downloaders import (
     make_bilibili_downloader,
     make_youtube_downloader,
     make_douyin_downloader,
+    make_xhs_downloader,
     make_network_downloader
 )
 from app.utils.progress import ProgressHelper
@@ -204,6 +205,43 @@ async def process_douyin_transcription(
         downloader=downloader,
         source_key=cache_key,
         source_label="Douyin",
+        task_type=task_type,
+        output_format=output_format,
+        only_get_subtitles=only_get_subtitles,
+        auto_analyze_prompt=auto_analyze_prompt,
+        auto_analyze_prompt_id=auto_analyze_prompt_id,
+        auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+    )
+
+async def process_xiaohongshu_transcription(
+    transcription_id: int,
+    direct_url: str,
+    task_type: str,
+    output_format: str = None,
+    source_id: str = None,
+    local_file_path: str = None,
+    only_get_subtitles: bool = False,
+    force_transcription: bool = False,
+    auto_analyze_prompt: str = None,
+    auto_analyze_prompt_id: int = None,
+    auto_analyze_strip_subtitle: bool = True
+):
+    """Process a Xiaohongshu video for transcription"""
+    dl_progress = ProgressHelper(task_manager, transcription_id, 0, 30)
+
+    cache_key = source_id or direct_url
+
+    if local_file_path and os.path.exists(local_file_path):
+        logger.info(f"📂 Using local cache for XHS re-transcription: {local_file_path}")
+        downloader = make_network_downloader(local_file_path)
+    else:
+        downloader = make_xhs_downloader(direct_url, source_id, dl_progress)
+
+    await run_transcription_pipeline(
+        transcription_id=transcription_id,
+        downloader=downloader,
+        source_key=cache_key,
+        source_label="Xiaohongshu",
         task_type=task_type,
         output_format=output_format,
         only_get_subtitles=only_get_subtitles,

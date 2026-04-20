@@ -16,6 +16,7 @@ from app.db.video_meta import get_video_meta
 from app.downloaders.bilibili import get_video_info
 from app.downloaders.youtube import get_youtube_info
 from app.downloaders.douyin import get_douyin_info, extract_aweme_id, pick_douyin_quality_url
+from app.downloaders.xiaohongshu import get_xhs_info
 from app.core.logger import logger
 from app.core.config import settings
 from app.services.storage import storage
@@ -25,6 +26,7 @@ from app.utils.source_utils import (
     resolve_bilibili_id,
     resolve_youtube_video_id,
     resolve_douyin_url,
+    resolve_xhs_url,
 )
 from app.services.transcription.downloaders import download_network_file
 
@@ -317,6 +319,124 @@ async def prepare_douyin_transcription(request) -> dict:
     )
 
 
+async def prepare_xiaohongshu_transcription(request) -> dict:
+    """
+    Prepare dispatch params for a Xiaohongshu video.
+    Resolves xhslink.com short links, fetches metadata + CDN URL, checks local cache.
+    """
+    raw_url = request.url
+    resolved_url = await run_in_threadpool(resolve_xhs_url, raw_url)
+    logger.info(f"🔴 [XHS] URL: {raw_url[:60]} → resolved: {resolved_url}")
+
+    title = request.title
+    cover = request.cover or ""
+    direct_url = request.direct_url
+
+    if request.source_id:
+        parsed_id = request.source_id.replace("xhs_", "")
+        normalized_id = f"xhs_{parsed_id}"
+    else:
+        normalized_id = normalize_source_id(resolved_url, "xiaohongshu")
+
+    # Server-side extraction if metadata or direct_url missing
+    if not direct_url or not title:
+        logger.info(f"🔍 [XHS] Attempting server-side extraction for: {raw_url[:60]}")
+        info = await get_xhs_info(raw_url)
+        if info:
+            if info.get("note_id"):
+                normalized_id = f"xhs_{info['note_id']}"
+            title = title or info.get("title")
+            cover = cover or info.get("cover", "")
+            direct_url = direct_url or info.get("direct_url", "")
+
+    title = title or f"XHS {normalized_id.replace('xhs_', '')}"
+
+    if request.bookmark_only:
+        return dict(
+            source_id=normalized_id,
+            original_source=resolved_url,
+            source_type="xiaohongshu",
+            title=title,
+            cover=cover,
+            task_type=request.task_type,
+            bookmark_only=True,
+            language=request.language,
+            quality=request.quality,
+            direct_url=direct_url,
+            stream_url=request.stream_url,
+            only_get_subtitles=request.only_get_subtitles,
+            force_transcription=request.force_transcription,
+        )
+
+    if request.task_type == "cache_only":
+        return dict(
+            source_id=normalized_id,
+            original_source=resolved_url,
+            source_type="xiaohongshu",
+            title=title,
+            cover=cover,
+            task_type=request.task_type,
+            bookmark_only=False,
+            quality=request.quality,
+            direct_url=direct_url,
+            stream_url=request.stream_url,
+        )
+
+    media_path = get_best_media_path_by_source(normalized_id)
+    if media_path and os.path.exists(media_path):
+        row = get_transcription_by_source(normalized_id)
+        title = row['video_title'] if row else title
+        cover = row['video_cover'] if row else cover
+
+        return dict(
+            source_id=normalized_id,
+            original_source=resolved_url,
+            source_type="xiaohongshu",
+            title=title,
+            cover=cover,
+            task_type=request.task_type,
+            bookmark_only=False,
+            language=request.language,
+            prompt=request.prompt,
+            auto_analyze_prompt=request.auto_analyze_prompt,
+            auto_analyze_prompt_id=request.auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=request.auto_analyze_strip_subtitle,
+            output_format=request.output_format,
+            quality=request.quality,
+            local_file_path=media_path,
+            direct_url=direct_url,
+            stream_url=request.stream_url,
+            only_get_subtitles=request.only_get_subtitles,
+            force_transcription=request.force_transcription,
+        )
+
+    if direct_url:
+        return dict(
+            source_id=normalized_id,
+            original_source=resolved_url,
+            source_type="xiaohongshu",
+            title=title,
+            cover=cover,
+            task_type=request.task_type,
+            bookmark_only=False,
+            language=request.language,
+            prompt=request.prompt,
+            auto_analyze_prompt=request.auto_analyze_prompt,
+            auto_analyze_prompt_id=request.auto_analyze_prompt_id,
+            auto_analyze_strip_subtitle=request.auto_analyze_strip_subtitle,
+            output_format=request.output_format,
+            quality=request.quality,
+            direct_url=direct_url,
+            stream_url=request.stream_url,
+            only_get_subtitles=request.only_get_subtitles,
+            force_transcription=request.force_transcription,
+        )
+
+    raise ValueError(
+        "无法获取小红书视频直链。可能原因：笔记为图文、已删除、或小红书页面结构已更新。"
+    )
+
+
 async def prepare_network_transcription(request) -> dict:
     """
     Prepare dispatch params for a network URL.
@@ -437,6 +557,20 @@ async def prepare_retranscription(request) -> dict:
                 raise ValueError(
                     "抖音视频无本地缓存，且无法通过服务端获取直链。"
                     "可能原因：视频已删除、网络无法访问抖音、或抖音反爬机制已更新。"
+                )
+
+    elif source_type == 'xiaohongshu':
+        if has_cache:
+            kwargs['local_file_path'] = media_path
+        else:
+            info = await get_xhs_info(original_source)
+            if info and info.get("direct_url"):
+                kwargs['direct_url'] = info['direct_url']
+                logger.info(f"[XHS] Server-side extraction got direct_url for retranscription")
+            else:
+                raise ValueError(
+                    "小红书视频无本地缓存，且无法通过服务端获取直链。"
+                    "可能原因：笔记为图文、已删除、或小红书页面结构已更新。"
                 )
 
     elif source_type in ('video', 'audio', 'file'):

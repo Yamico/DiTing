@@ -51,6 +51,8 @@ export default function DetailPanel({ video, onClose, onRefresh }: DetailPanelPr
                 return `https://www.youtube.com/watch?v=${video.source_id}`
             case 'douyin':
                 return `https://www.douyin.com/video/${video.source_id.replace(/^dy_/, '')}`
+            case 'xiaohongshu':
+                return `https://www.xiaohongshu.com/discovery/item/${video.source_id.replace(/^xhs_/, '')}`
             default:
                 return null
         }

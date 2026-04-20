@@ -14,6 +14,7 @@ from app.core.task_manager import task_manager
 # Clients
 from app.downloaders.bilibili import download_audio
 from app.downloaders.douyin import download_douyin_video
+from app.downloaders.xiaohongshu import download_xhs_video
 from app.downloaders.youtube import download_youtube_video, download_youtube_media
 
 def make_bilibili_downloader(url: str, range_start: float, range_end: float, progress_helper: ProgressHelper) -> Callable[[int], Awaitable[str]]:
@@ -69,6 +70,24 @@ def make_douyin_downloader(direct_url: str, source_id: str, progress_helper: Pro
         )
         if not video_path:
             raise Exception("Failed to download video from Douyin")
+        return video_path
+    return download
+
+def make_xhs_downloader(direct_url: str, source_id: str, progress_helper: ProgressHelper) -> Callable[[int], Awaitable[str]]:
+    """Factory for Xiaohongshu downloader"""
+    async def download(transcription_id: int) -> str:
+        check_cancel_wrapper = lambda tid=None: task_manager.check_cancel(transcription_id)
+
+        video_path = await run_in_threadpool(
+            download_xhs_video,
+            direct_url,
+            "https://www.xiaohongshu.com/",
+            transcription_id,
+            check_cancel_wrapper,
+            progress_helper.get_callback()
+        )
+        if not video_path:
+            raise Exception("Failed to download video from Xiaohongshu")
         return video_path
     return download
 

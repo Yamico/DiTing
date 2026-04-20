@@ -14,6 +14,7 @@ from app.services.transcription.request_service import (
     prepare_bilibili_transcription,
     prepare_youtube_transcription,
     prepare_douyin_transcription,
+    prepare_xiaohongshu_transcription,
     prepare_network_transcription,
     prepare_retranscription,
 )
@@ -22,6 +23,7 @@ from app.schemas import (
     TranscribeYouTubeRequest,
     TranscribeNetworkRequest,
     TranscribeDouyinRequest,
+    TranscribeXiaohongshuRequest,
     RetranscribeRequest,
 )
 
@@ -91,6 +93,19 @@ async def transcribe_douyin(
     """Transcribe a Douyin video."""
     try:
         params = await prepare_douyin_transcription(request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return await create_and_dispatch(background_tasks, **params)
+
+
+@router.post("/transcribe/xiaohongshu")
+async def transcribe_xiaohongshu(
+    background_tasks: BackgroundTasks,
+    request: TranscribeXiaohongshuRequest
+):
+    """Transcribe a Xiaohongshu (小红书) video."""
+    try:
+        params = await prepare_xiaohongshu_transcription(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return await create_and_dispatch(background_tasks, **params)

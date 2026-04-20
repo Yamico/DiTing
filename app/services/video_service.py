@@ -486,6 +486,30 @@ async def refresh_metadata(source_id: str, format_cover, download_cover_fn) -> d
             "source_type": "douyin",
         }
 
+    if source_type == 'xiaohongshu':
+        from app.downloaders.xiaohongshu import get_xhs_info
+        xhs_url = actual_source
+        if not xhs_url or not xhs_url.startswith('http'):
+            nid = source_id.replace('xhs_', '')
+            xhs_url = f"https://www.xiaohongshu.com/discovery/item/{nid}"
+        info = await get_xhs_info(xhs_url)
+        if not info:
+            raise ValueError("无法获取小红书元数据，可能笔记已删除或页面结构已更新")
+        cover = info.get('cover', '')
+        if cover and (cover.startswith('http') or cover.startswith('//')):
+            cover = await run_in_threadpool(download_cover_fn, cover)
+        title = info.get('title', '')
+        if not title:
+            raise ValueError("小红书元数据获取失败：无标题")
+        update_video_metadata(source_id, title, cover)
+        return {
+            "status": "success",
+            "updated_count": 1,
+            "title": title,
+            "cover": format_cover(cover),
+            "source_type": "xiaohongshu",
+        }
+
     if source_type == 'youtube':
         proxy = get_system_config('proxy_url')
         info = get_youtube_info(f"https://www.youtube.com/watch?v={source_id}", proxy=proxy)

@@ -204,6 +204,13 @@ export async function transcribeDouyin(request: TranscribeUrlRequest): Promise<{
     })
 }
 
+export async function transcribeXiaohongshu(request: TranscribeUrlRequest): Promise<{ task_id: number }> {
+    return fetchJson(`${API_BASE}/transcribe/xiaohongshu`, {
+        method: 'POST',
+        body: JSON.stringify(request),
+    })
+}
+
 export interface TranscribeNetworkRequest {
     url: string
     title?: string

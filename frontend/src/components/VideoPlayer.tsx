@@ -105,7 +105,7 @@ export default function VideoPlayer({
         }
     } else if (activeTab === 'stream') {
         if (video.stream_url) {
-            if (video.source_type === 'douyin') {
+            if (video.source_type === 'douyin' || video.source_type === 'xiaohongshu') {
                 content = (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--color-text-muted)] gap-4 bg-black/90">
                         <Icons.Globe className="w-12 h-12 opacity-50" />
@@ -180,7 +180,7 @@ export default function VideoPlayer({
     }
 
     const isDouyinEmbedActive = activeTab === 'embed' && video.source_type === 'douyin' && video.embed_url
-    const hasCacheSection = video.media_available || ['bilibili', 'youtube', 'douyin'].includes(video.source_type)
+    const hasCacheSection = video.media_available || ['bilibili', 'youtube', 'douyin', 'xiaohongshu'].includes(video.source_type)
 
     return (
         <div className={`space-y-3 ${mobileLayout === 'split' ? 'mb-2 lg:mb-6' : 'mb-6'}`}>
@@ -389,7 +389,7 @@ export default function VideoPlayer({
                     </div>
 
                     {/* Row 2: Version Selector + Append Cache */}
-                    {((video.cache_versions?.length ?? 0) > 0 || ['bilibili', 'youtube', 'douyin'].includes(video.source_type)) && (
+                    {((video.cache_versions?.length ?? 0) > 0 || ['bilibili', 'youtube', 'douyin', 'xiaohongshu'].includes(video.source_type)) && (
                         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)]/50 pt-2">
                             {video.cache_versions && video.cache_versions.length > 0 ? (
                                 <div className="flex items-center gap-2 text-xs">
@@ -418,7 +418,7 @@ export default function VideoPlayer({
                                 </div>
                             ) : <div />}
 
-                            {['bilibili', 'youtube', 'douyin'].includes(video.source_type) && (
+                            {['bilibili', 'youtube', 'douyin', 'xiaohongshu'].includes(video.source_type) && (
                                 <div className="relative">
                                     <button
                                         onClick={() => setShowAppendCacheMenu(!showAppendCacheMenu)}

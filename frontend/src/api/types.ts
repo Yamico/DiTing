@@ -7,7 +7,7 @@ export interface Video {
     id: number | null
     source_id: string
     source?: string
-    source_type: 'bilibili' | 'youtube' | 'douyin' | 'file' | 'video' | 'audio'
+    source_type: 'bilibili' | 'youtube' | 'douyin' | 'xiaohongshu' | 'network' | 'file' | 'video' | 'audio'
     title: string
     cover: string
     last_updated: string             // Backend field name (not timestamp)

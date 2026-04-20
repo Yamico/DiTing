@@ -115,6 +115,27 @@ class TranscribeDouyinRequest(BaseModel):
     force_transcription: bool = Field(False, description="Ignore subtitles and force ASR")
 
 
+class TranscribeXiaohongshuRequest(BaseModel):
+    """Request schema for Xiaohongshu (小红书) video transcription."""
+    url: str = Field(..., description="Xiaohongshu note URL, xhslink.com short link, or share text")
+    source_id: Optional[str] = Field(None, description="Normalized xhs_<noteId> source identifier")
+    direct_url: Optional[str] = Field(None, description="Direct CDN stream URL")
+    stream_url: Optional[str] = Field(None, description="Alternative stream URL")
+    title: Optional[str] = Field(None, description="Note title")
+    cover: Optional[str] = Field(None, description="Cover image URL")
+    task_type: str = Field("transcribe", description="transcribe or cache_only")
+    quality: Optional[str] = Field("best", description="Download quality (unused for XHS, kept for parity)")
+    language: str = Field("zh", description="Target language code")
+    prompt: Optional[str] = Field(None, description="Custom prompt for transcription")
+    auto_analyze_prompt: Optional[str] = Field(None, description="Prompt text for automatic AI analysis")
+    auto_analyze_prompt_id: Optional[int] = Field(None, description="Prompt ID for use count tracking")
+    auto_analyze_strip_subtitle: bool = Field(True, description="Strip subtitle metadata before AI analysis")
+    output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
+    bookmark_only: bool = Field(False, description="Save metadata only, do not trigger transcription")
+    only_get_subtitles: bool = Field(False, description="Fail if subtitles are not available")
+    force_transcription: bool = Field(False, description="Ignore subtitles and force ASR")
+
+
 class RetranscribeRequest(BaseModel):
     """Request schema for unified re-transcription."""
     source_id: str = Field(..., description="Source ID of the video to re-transcribe")

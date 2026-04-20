@@ -51,6 +51,8 @@ def get_cached_cover_path(url: str):
         referer = "https://www.bilibili.com/"
         if "douyin" in url or "bytecdn" in url:
             referer = "https://www.douyin.com/"
+        elif "xhscdn.com" in url or "xiaohongshu" in url:
+            referer = "https://www.xiaohongshu.com/"
         elif "youtube" in url or "ytimg" in url or "googlevideo" in url:
             referer = "https://www.youtube.com/"
             
