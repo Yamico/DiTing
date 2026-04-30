@@ -79,7 +79,7 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
     const [clipboardHint, setClipboardHint] = useState('')
     const [prompts, setPrompts] = useState<Prompt[]>([])
     const prefs = useTranscriptionPrefs()
-    const { language, setLanguage, subtitleMode, setSubtitleMode, outputFormat, setOutputFormat, autoAnalyze, setAutoAnalyze, selectedPromptId, setSelectedPromptId, stripSubtitle, setStripSubtitle, saveAll } = prefs
+    const { language, setLanguage, subtitleMode, setSubtitleMode, outputFormat, setOutputFormat, autoAnalyze, setAutoAnalyze, selectedPromptId, setSelectedPromptId, stripSubtitle, setStripSubtitle, autoGenerateNote, setAutoGenerateNote, noteStyle, setNoteStyle, noteScreenshotDensity, setNoteScreenshotDensity, saveAll } = prefs
     const inputRef = useRef<HTMLInputElement>(null)
 
     // Load prompts
@@ -201,7 +201,10 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                 force_transcription: subtitleMode === 'force_asr',
                 auto_analyze_prompt: autoAnalyze && selectedPromptId ? prompts.find(p => p.id === selectedPromptId)?.content : undefined,
                 auto_analyze_prompt_id: autoAnalyze && typeof selectedPromptId === 'number' ? selectedPromptId : undefined,
-                auto_analyze_strip_subtitle: autoAnalyze ? stripSubtitle : undefined
+                auto_analyze_strip_subtitle: autoAnalyze ? stripSubtitle : undefined,
+                auto_generate_note: autoGenerateNote || undefined,
+                auto_note_style: autoGenerateNote ? noteStyle : undefined,
+                auto_note_screenshot_density: autoGenerateNote && noteScreenshotDensity ? noteScreenshotDensity : undefined,
             }
 
             if (platform === 'bilibili') {
@@ -532,6 +535,52 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                                         />
                                         <span className="text-xs text-[var(--color-text-muted)]">{t('addVideo.stripSubtitle')}</span>
                                     </label>
+                                </div>
+                            )}
+
+                            {/* Auto Generate Note */}
+                            <label className="flex items-center gap-2 cursor-pointer pt-2">
+                                <input
+                                    type="checkbox"
+                                    checked={autoGenerateNote}
+                                    onChange={(e) => setAutoGenerateNote(e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                                />
+                                <span className="text-sm font-medium">{t('addVideo.autoGenerateNote')}</span>
+                            </label>
+
+                            {autoGenerateNote && (
+                                <div className="space-y-2 pl-6">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] text-[var(--color-text-muted)]">{t('addVideo.noteStyleLabel')}</label>
+                                            <select
+                                                value={noteStyle}
+                                                onChange={(e) => setNoteStyle(e.target.value as 'concise' | 'detailed' | 'outline')}
+                                                className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
+                                            >
+                                                <option value="concise">{t('addVideo.noteStyle.concise')}</option>
+                                                <option value="detailed">{t('addVideo.noteStyle.detailed')}</option>
+                                                <option value="outline">{t('addVideo.noteStyle.outline')}</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] text-[var(--color-text-muted)]">{t('addVideo.noteScreenshotLabel')}</label>
+                                            <select
+                                                value={noteScreenshotDensity}
+                                                onChange={(e) => setNoteScreenshotDensity(e.target.value as '' | 'few' | 'moderate' | 'dense')}
+                                                className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
+                                            >
+                                                <option value="">{t('addVideo.noteScreenshot.none')}</option>
+                                                <option value="few">{t('addVideo.noteScreenshot.few')}</option>
+                                                <option value="moderate">{t('addVideo.noteScreenshot.moderate')}</option>
+                                                <option value="dense">{t('addVideo.noteScreenshot.dense')}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {noteScreenshotDensity && (
+                                        <p className="text-[10px] text-[var(--color-text-muted)] leading-tight">{t('addVideo.noteScreenshotHint')}</p>
+                                    )}
                                 </div>
                             )}
                         </div>

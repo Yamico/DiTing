@@ -432,7 +432,22 @@
         "selectPrompt": "选择分析提示词",
         "mostUsedPrompts": "常用提示词",
         "noPrompts": "暂无提示词，请在设置中添加",
-        "stripSubtitle": "字幕预处理（去除时间戳等元数据）"
+        "stripSubtitle": "字幕预处理（去除时间戳等元数据）",
+        "autoGenerateNote": "转录完成后自动生成 AI 笔记",
+        "noteStyleLabel": "笔记风格",
+        "noteStyle": {
+            "concise": "简洁",
+            "detailed": "详细",
+            "outline": "大纲"
+        },
+        "noteScreenshotLabel": "关键帧截图",
+        "noteScreenshot": {
+            "none": "不截图",
+            "few": "少量 (3-5)",
+            "moderate": "适中",
+            "dense": "密集"
+        },
+        "noteScreenshotHint": "需要本地视频缓存才能截图"
     },
     "retranscribeModal": {
         "newSegmentHint": "将创建新的转录记录，不会覆盖已有内容",

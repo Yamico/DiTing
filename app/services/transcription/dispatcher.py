@@ -76,6 +76,9 @@ async def create_and_dispatch(
     auto_analyze_prompt: str = None,
     auto_analyze_prompt_id: int = None,
     auto_analyze_strip_subtitle: bool = True,
+    auto_generate_note: bool = False,
+    auto_note_style: str = None,
+    auto_note_screenshot_density: str = None,
     output_format: str = None,
     # Source-specific
     stream_url: str = None,
@@ -214,7 +217,10 @@ async def create_and_dispatch(
             force_transcription=force_transcription,
             auto_analyze_prompt=auto_analyze_prompt,
             auto_analyze_prompt_id=auto_analyze_prompt_id,
-            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
+            auto_generate_note=auto_generate_note,
+            auto_note_style=auto_note_style,
+            auto_note_screenshot_density=auto_note_screenshot_density
         )
     elif source_type == 'youtube':
         background_tasks.add_task(
@@ -230,7 +236,10 @@ async def create_and_dispatch(
             force_transcription=force_transcription,
             auto_analyze_prompt=auto_analyze_prompt,
             auto_analyze_prompt_id=auto_analyze_prompt_id,
-            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
+            auto_generate_note=auto_generate_note,
+            auto_note_style=auto_note_style,
+            auto_note_screenshot_density=auto_note_screenshot_density
         )
     elif source_type == 'douyin':
         # Douyin requires direct_url
@@ -246,7 +255,10 @@ async def create_and_dispatch(
             force_transcription=force_transcription,
             auto_analyze_prompt=auto_analyze_prompt,
             auto_analyze_prompt_id=auto_analyze_prompt_id,
-            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
+            auto_generate_note=auto_generate_note,
+            auto_note_style=auto_note_style,
+            auto_note_screenshot_density=auto_note_screenshot_density
         )
     elif source_type == 'xiaohongshu':
         background_tasks.add_task(
@@ -261,7 +273,10 @@ async def create_and_dispatch(
             force_transcription=force_transcription,
             auto_analyze_prompt=auto_analyze_prompt,
             auto_analyze_prompt_id=auto_analyze_prompt_id,
-            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
+            auto_generate_note=auto_generate_note,
+            auto_note_style=auto_note_style,
+            auto_note_screenshot_density=auto_note_screenshot_density
         )
     elif source_type == 'network':
         # Network requires file_path (downloaded by caller/helper)
@@ -279,7 +294,10 @@ async def create_and_dispatch(
             force_transcription=force_transcription,
             auto_analyze_prompt=auto_analyze_prompt,
             auto_analyze_prompt_id=auto_analyze_prompt_id,
-            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
+            auto_generate_note=auto_generate_note,
+            auto_note_style=auto_note_style,
+            auto_note_screenshot_density=auto_note_screenshot_density
         )
     elif source_type == 'file' or source_type == 'video' or source_type == 'audio':
          background_tasks.add_task(
@@ -299,7 +317,10 @@ async def create_and_dispatch(
             force_transcription=force_transcription,
             auto_analyze_prompt=auto_analyze_prompt,
             auto_analyze_prompt_id=auto_analyze_prompt_id,
-            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle
+            auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
+            auto_generate_note=auto_generate_note,
+            auto_note_style=auto_note_style,
+            auto_note_screenshot_density=auto_note_screenshot_density
         )
 
     return {

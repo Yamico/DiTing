@@ -181,6 +181,9 @@ export interface TranscribeUrlRequest {
     auto_analyze_prompt?: string
     auto_analyze_prompt_id?: number
     auto_analyze_strip_subtitle?: boolean
+    auto_generate_note?: boolean
+    auto_note_style?: 'concise' | 'detailed' | 'outline'
+    auto_note_screenshot_density?: '' | 'few' | 'moderate' | 'dense'
 }
 
 export async function transcribeBilibili(request: TranscribeUrlRequest): Promise<{ task_id: number }> {
@@ -223,6 +226,9 @@ export interface TranscribeNetworkRequest {
     auto_analyze_prompt?: string
     auto_analyze_prompt_id?: number
     auto_analyze_strip_subtitle?: boolean
+    auto_generate_note?: boolean
+    auto_note_style?: 'concise' | 'detailed' | 'outline'
+    auto_note_screenshot_density?: '' | 'few' | 'moderate' | 'dense'
 }
 
 export async function transcribeNetwork(request: TranscribeNetworkRequest): Promise<{ id: number }> {
@@ -240,6 +246,9 @@ export interface RetranscribeRequest {
     auto_analyze_prompt?: string
     auto_analyze_prompt_id?: number
     auto_analyze_strip_subtitle?: boolean
+    auto_generate_note?: boolean
+    auto_note_style?: 'concise' | 'detailed' | 'outline'
+    auto_note_screenshot_density?: '' | 'few' | 'moderate' | 'dense'
     only_get_subtitles?: boolean
     force_transcription?: boolean
 }

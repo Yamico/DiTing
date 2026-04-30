@@ -31,6 +31,9 @@ async def run_transcription_pipeline(
     auto_analyze_prompt: str = None,
     auto_analyze_prompt_id: int = None,
     auto_analyze_strip_subtitle: bool = True,
+    auto_generate_note: bool = False,
+    auto_note_style: str = None,
+    auto_note_screenshot_density: str = None,
 ):
     """
     Unified transcription pipeline.
@@ -96,7 +99,12 @@ async def run_transcription_pipeline(
                             transcription_id, skipped_result, auto_analyze_prompt,
                             auto_analyze_prompt_id, auto_analyze_strip_subtitle, source_label
                         )
-                    
+                    if auto_generate_note:
+                        await _trigger_auto_note(
+                            transcription_id, auto_note_style,
+                            auto_note_screenshot_density, source_label
+                        )
+
                     return
             except Exception as e:
                 logger.warning(f"⚠️ Pre-ASR hook failed: {e}")
@@ -147,6 +155,11 @@ async def run_transcription_pipeline(
             await _trigger_auto_analysis(
                 transcription_id, raw_text, auto_analyze_prompt,
                 auto_analyze_prompt_id, auto_analyze_strip_subtitle, source_label
+            )
+        if auto_generate_note:
+            await _trigger_auto_note(
+                transcription_id, auto_note_style,
+                auto_note_screenshot_density, source_label
             )
 
         task_manager.finish_task(transcription_id)
@@ -272,5 +285,71 @@ async def _trigger_auto_analysis(
             input_text=None,
             overwrite=False,
             overwrite_id=None,
+        )
+    )
+
+
+async def _trigger_auto_note(
+    transcription_id: int,
+    style: Optional[str],
+    screenshot_density: Optional[str],
+    source_label: str,
+):
+    """Shared helper to trigger AI note generation after transcription completion."""
+    from app.api.v1.endpoints.notes import (
+        process_note_generation, build_note_prompt, build_transcript_text,
+    )
+    from app.db import get_video_meta
+    from app.db.transcriptions import get_transcription
+    from app.core.logger import trace_id_ctx
+
+    record = get_transcription(transcription_id)
+    if not record:
+        logger.warning(f"📝 Skipping auto-note: transcription {transcription_id} not found")
+        return
+
+    record_dict = dict(record)
+    source_id = record_dict.get("source")
+    if not source_id:
+        logger.warning(f"📝 Skipping auto-note: source missing on transcription {transcription_id}")
+        return
+
+    transcript_text = build_transcript_text([record])
+    if not transcript_text.strip():
+        logger.warning(f"📝 Skipping auto-note: empty transcript for {source_id}")
+        return
+
+    base_prompt = build_note_prompt(style, screenshot_density)
+
+    # Resolve title for task center
+    title = source_label
+    meta = get_video_meta(source_id)
+    if meta:
+        title = dict(meta).get("video_title") or source_label
+
+    # Generate task ID using nanosecond precision to avoid collision with
+    # auto-analysis triggered moments earlier in the same coroutine
+    task_id = -(time.time_ns() // 1000) % 1000000000
+
+    logger.info(f"📝 Triggering auto-note for {source_id} (style={style}, density={screenshot_density})")
+
+    task_manager.start_task(task_id, meta={
+        "type": "ai",
+        "filename": f"Note: {title}",
+    })
+
+    trace_id = trace_id_ctx.get()
+    asyncio.create_task(
+        process_note_generation(
+            source_id=source_id,
+            task_id=task_id,
+            transcript_text=transcript_text,
+            prompt=base_prompt,
+            llm_model_id=None,
+            style=style,
+            screenshot_density=screenshot_density,
+            user_prompt=None,
+            transcription_version=None,
+            trace_id_token=trace_id,
         )
     )

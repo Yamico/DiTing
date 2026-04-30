@@ -428,7 +428,22 @@
         "selectPrompt": "Select analysis prompt",
         "mostUsedPrompts": "Frequently used",
         "noPrompts": "No prompts available, please add in Settings",
-        "stripSubtitle": "Subtitle preprocessing (remove timestamps etc.)"
+        "stripSubtitle": "Subtitle preprocessing (remove timestamps etc.)",
+        "autoGenerateNote": "Auto generate AI note after transcription",
+        "noteStyleLabel": "Note style",
+        "noteStyle": {
+            "concise": "Concise",
+            "detailed": "Detailed",
+            "outline": "Outline"
+        },
+        "noteScreenshotLabel": "Keyframe screenshots",
+        "noteScreenshot": {
+            "none": "None",
+            "few": "Few (3-5)",
+            "moderate": "Moderate",
+            "dense": "Dense"
+        },
+        "noteScreenshotHint": "Requires local video cache to capture frames"
     },
     "retranscribeModal": {
         "newSegmentHint": "A new transcription record will be created, existing content won't be overwritten",

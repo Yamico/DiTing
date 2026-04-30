@@ -12,6 +12,9 @@ const KEYS = {
     autoAnalyze: 'diting_auto_analyze',
     promptId: 'diting_pref_prompt_id',
     stripSubtitle: 'diting_pref_strip_subtitle',
+    autoGenerateNote: 'diting_auto_generate_note',
+    noteStyle: 'diting_pref_note_style',
+    noteScreenshotDensity: 'diting_pref_note_screenshot_density',
 } as const
 
 function load<T>(key: string, fallback: T): T {
@@ -45,6 +48,13 @@ export function useTranscriptionPrefs() {
         return isNaN(n) ? '' : n
     })
     const [stripSubtitle, setStripSubtitle] = useState(() => load(KEYS.stripSubtitle, true))
+    const [autoGenerateNote, setAutoGenerateNote] = useState(() => load(KEYS.autoGenerateNote, false))
+    const [noteStyle, setNoteStyle] = useState<'concise' | 'detailed' | 'outline'>(
+        () => load(KEYS.noteStyle, 'detailed') as 'concise' | 'detailed' | 'outline'
+    )
+    const [noteScreenshotDensity, setNoteScreenshotDensity] = useState<'' | 'few' | 'moderate' | 'dense'>(
+        () => load(KEYS.noteScreenshotDensity, '') as '' | 'few' | 'moderate' | 'dense'
+    )
 
     /** 提交成功后调用，把当前偏好全部持久化 */
     const saveAll = useCallback(() => {
@@ -54,7 +64,10 @@ export function useTranscriptionPrefs() {
         localStorage.setItem(KEYS.autoAnalyze, autoAnalyze ? 'true' : 'false')
         localStorage.setItem(KEYS.promptId, String(selectedPromptId))
         localStorage.setItem(KEYS.stripSubtitle, stripSubtitle ? 'true' : 'false')
-    }, [language, subtitleMode, outputFormat, autoAnalyze, selectedPromptId, stripSubtitle])
+        localStorage.setItem(KEYS.autoGenerateNote, autoGenerateNote ? 'true' : 'false')
+        localStorage.setItem(KEYS.noteStyle, noteStyle)
+        localStorage.setItem(KEYS.noteScreenshotDensity, noteScreenshotDensity)
+    }, [language, subtitleMode, outputFormat, autoAnalyze, selectedPromptId, stripSubtitle, autoGenerateNote, noteStyle, noteScreenshotDensity])
 
     return {
         language, setLanguage,
@@ -63,6 +76,9 @@ export function useTranscriptionPrefs() {
         autoAnalyze, setAutoAnalyze,
         selectedPromptId, setSelectedPromptId,
         stripSubtitle, setStripSubtitle,
+        autoGenerateNote, setAutoGenerateNote,
+        noteStyle, setNoteStyle,
+        noteScreenshotDensity, setNoteScreenshotDensity,
         saveAll,
     }
 }

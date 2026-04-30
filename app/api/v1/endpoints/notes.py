@@ -97,7 +97,7 @@ SCREENSHOT_PROMPTS = {
 }
 
 
-def _build_note_prompt(style: Optional[str], screenshot_density: Optional[str] = None) -> str:
+def build_note_prompt(style: Optional[str], screenshot_density: Optional[str] = None) -> str:
     """Build the final user prompt for note generation based on style."""
     base = NOTE_SYSTEM_PROMPT
     if screenshot_density and screenshot_density in SCREENSHOT_PROMPTS:
@@ -110,7 +110,7 @@ def _build_note_prompt(style: Optional[str], screenshot_density: Optional[str] =
         return base + "\n\n**风格要求**：详细模式，充分展开每个章节，保留所有重要细节。"
 
 
-def _build_transcript_text(segments: list) -> str:
+def build_transcript_text(segments: list) -> str:
     """Combine all segments into a timestamped transcript text."""
     lines = []
     for seg in segments:
@@ -201,7 +201,7 @@ def _extract_screenshots(content: str, source_id: str) -> str:
 
 # --- Background Worker ---
 
-async def _process_note_generation(
+async def process_note_generation(
     source_id: str,
     task_id: int,
     transcript_text: str,
@@ -361,12 +361,12 @@ async def generate_note(request: NoteGenerateRequest, background_tasks: Backgrou
         pinned = [s for s in all_segments if dict(s).get('is_pinned')]
         segments = pinned if pinned else all_segments
 
-    transcript_text = _build_transcript_text(segments)
+    transcript_text = build_transcript_text(segments)
     if not transcript_text.strip():
         raise HTTPException(status_code=422, detail="Transcription text is empty.")
 
     # Build final prompt — always start from built-in, append user instructions if provided
-    base_prompt = _build_note_prompt(request.style, request.screenshot_density)
+    base_prompt = build_note_prompt(request.style, request.screenshot_density)
     if request.prompt and request.prompt.strip():
         base_prompt += f"\n\n**用户附加指令：**\n{request.prompt.strip()}"
 
@@ -384,7 +384,7 @@ async def generate_note(request: NoteGenerateRequest, background_tasks: Backgrou
 
     trace_id = trace_id_ctx.get()
     background_tasks.add_task(
-        _process_note_generation,
+        process_note_generation,
         source_id,
         task_id,
         transcript_text,
