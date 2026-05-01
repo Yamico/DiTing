@@ -6,10 +6,11 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { useTranslation } from 'react-i18next'
 
-import type { Segment, VideoNote, LLMProvider, Task, Video } from '../api/types'
+import type { Segment, VideoNote, LLMProvider, Task, Video, Prompt } from '../api/types'
 import {
     getNotes, generateNote, updateNote, resetNote, activateNote, deleteNote,
-    getLLMProviders, getTasks, cancelTask, retranscribe, uploadNoteScreenshot
+    getLLMProviders, getTasks, cancelTask, retranscribe, uploadNoteScreenshot,
+    getPrompts, createPrompt, getCategories,
 } from '../api/client'
 import { useToast } from '../contexts/ToastContext'
 import Icons from './ui/Icons'
@@ -379,6 +380,8 @@ function GeneratePanel({
     onCancelTask,
     customPrompt,
     setCustomPrompt,
+    notePrompts,
+    onSavePromptAsPreset,
     showGenStages,
     setShowGenStages,
 }: {
@@ -399,6 +402,8 @@ function GeneratePanel({
     onCancelTask: () => void
     customPrompt: string
     setCustomPrompt: (v: string) => void
+    notePrompts: Prompt[]
+    onSavePromptAsPreset: (name: string, content: string) => void
     showGenStages: boolean
     setShowGenStages: (v: boolean) => void
 }) {
@@ -499,7 +504,43 @@ function GeneratePanel({
 
                     {/* Additional instructions */}
                     <div className="note-gen-field" style={{ flexBasis: '100%' }}>
-                        <label className="note-gen-label">{t('detail.aiNotes.customPrompt')}</label>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="note-gen-label" style={{ marginBottom: 0 }}>{t('detail.aiNotes.customPrompt')}</label>
+                            {customPrompt.trim() && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const trimmed = customPrompt.trim()
+                                        if (!trimmed) return
+                                        const name = window.prompt(t('detail.aiNotes.promptSavePromptName'), trimmed.slice(0, 30))
+                                        if (name && name.trim()) {
+                                            onSavePromptAsPreset(name.trim(), trimmed)
+                                        }
+                                    }}
+                                    className="text-[11px] text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                                    title={t('detail.aiNotes.promptSaveAs')}
+                                >
+                                    <Icons.Bookmark className="w-3 h-3" />
+                                    {t('detail.aiNotes.promptSaveAs')}
+                                </button>
+                            )}
+                        </div>
+                        {notePrompts.length > 0 && (
+                            <select
+                                className="note-gen-select mb-2"
+                                value=""
+                                onChange={e => {
+                                    const id = Number(e.target.value)
+                                    const p = notePrompts.find(np => np.id === id)
+                                    if (p) setCustomPrompt(p.content)
+                                }}
+                            >
+                                <option value="">{t('detail.aiNotes.promptPresetSelect')}</option>
+                                {notePrompts.map(p => (
+                                    <option key={p.id} value={p.id} title={p.content}>{p.name}</option>
+                                ))}
+                            </select>
+                        )}
                         <textarea
                             className="note-gen-textarea"
                             value={customPrompt}
@@ -711,6 +752,33 @@ export default function NoteView({
     const { data: providers = [] } = useQuery<LLMProvider[]>({
         queryKey: ['llm_providers'],
         queryFn: getLLMProviders,
+    })
+
+    // Note add-on prompts (saved presets, filtered by category_key === 'note_addon')
+    const { data: allPrompts = [] } = useQuery<Prompt[]>({
+        queryKey: ['prompts'],
+        queryFn: getPrompts,
+    })
+    const { data: allCategories = [] } = useQuery({
+        queryKey: ['prompt_categories'],
+        queryFn: getCategories,
+    })
+    const notePromptCategoryId = useMemo(
+        () => allCategories.find(c => c.key === 'note_addon')?.id ?? null,
+        [allCategories]
+    )
+    const notePrompts = useMemo(
+        () => allPrompts.filter(p => p.category_key === 'note_addon'),
+        [allPrompts]
+    )
+    const savePromptMut = useMutation({
+        mutationFn: ({ name, content }: { name: string; content: string }) =>
+            createPrompt(name, content, notePromptCategoryId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['prompts'] })
+            showToast('success', t('detail.aiNotes.promptSavedSuccess'))
+        },
+        onError: () => showToast('error', t('detail.aiNotes.promptSaveFailed')),
     })
 
     const activeNote = notes.find(n => n.is_active) ?? notes[0] ?? null
@@ -1570,6 +1638,8 @@ export default function NoteView({
                     onCancelTask={() => pendingTaskId !== null && cancelTask(pendingTaskId).then(() => setPendingTaskId(null))}
                     customPrompt={customPrompt}
                     setCustomPrompt={setCustomPrompt}
+                    notePrompts={notePrompts}
+                    onSavePromptAsPreset={(name, content) => savePromptMut.mutate({ name, content })}
                     showGenStages={showGenStages}
                     setShowGenStages={setShowGenStages}
                 />

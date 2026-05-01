@@ -9,6 +9,28 @@ from app.core.logger import logger
 def seed_all(cursor):
     """Run all seed operations. Safe to call multiple times."""
     seed_prompt_categories_and_prompts(cursor)
+    ensure_builtin_categories(cursor)
+
+
+def ensure_builtin_categories(cursor):
+    """Ensure built-in prompt categories exist. Idempotent — safe on every startup.
+
+    Adds categories that were introduced after the initial seed so existing
+    installs pick them up without a schema-version bump.
+    """
+    builtins = [
+        # (name, key, sort_order)
+        ("笔记附加指令", "note_addon", 10),
+    ]
+    for name, key, sort in builtins:
+        cursor.execute("SELECT id FROM prompt_categories WHERE key = ?", (key,))
+        if cursor.fetchone():
+            continue
+        cursor.execute(
+            "INSERT INTO prompt_categories (name, key, sort_order) VALUES (?, ?, ?)",
+            (name, key, sort)
+        )
+        logger.info(f"🌱 Added built-in prompt category: {key}")
 def seed_prompt_categories_and_prompts(cursor):
     """Seed default prompt categories and prompt templates."""
     cursor.execute("SELECT COUNT(*) FROM prompt_categories")

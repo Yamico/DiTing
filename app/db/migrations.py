@@ -107,6 +107,9 @@ def init_db():
             else:
                 logger.info(f"✅ Database schema is up-to-date (v{current}).")
 
+        # Always ensure built-in prompt categories exist (idempotent, runs on every startup)
+        db_seed.ensure_builtin_categories(cursor)
+
         conn.commit()
     except Exception:
         conn.rollback()
