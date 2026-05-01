@@ -15,6 +15,7 @@ const KEYS = {
     autoGenerateNote: 'diting_auto_generate_note',
     noteStyle: 'diting_pref_note_style',
     noteScreenshotDensity: 'diting_pref_note_screenshot_density',
+    noteUserPrompt: 'diting_pref_note_user_prompt',
 } as const
 
 function load<T>(key: string, fallback: T): T {
@@ -55,6 +56,7 @@ export function useTranscriptionPrefs() {
     const [noteScreenshotDensity, setNoteScreenshotDensity] = useState<'' | 'few' | 'moderate' | 'dense'>(
         () => load(KEYS.noteScreenshotDensity, '') as '' | 'few' | 'moderate' | 'dense'
     )
+    const [noteUserPrompt, setNoteUserPrompt] = useState(() => load(KEYS.noteUserPrompt, ''))
 
     /** 提交成功后调用，把当前偏好全部持久化 */
     const saveAll = useCallback(() => {
@@ -67,7 +69,8 @@ export function useTranscriptionPrefs() {
         localStorage.setItem(KEYS.autoGenerateNote, autoGenerateNote ? 'true' : 'false')
         localStorage.setItem(KEYS.noteStyle, noteStyle)
         localStorage.setItem(KEYS.noteScreenshotDensity, noteScreenshotDensity)
-    }, [language, subtitleMode, outputFormat, autoAnalyze, selectedPromptId, stripSubtitle, autoGenerateNote, noteStyle, noteScreenshotDensity])
+        localStorage.setItem(KEYS.noteUserPrompt, noteUserPrompt)
+    }, [language, subtitleMode, outputFormat, autoAnalyze, selectedPromptId, stripSubtitle, autoGenerateNote, noteStyle, noteScreenshotDensity, noteUserPrompt])
 
     return {
         language, setLanguage,
@@ -79,6 +82,7 @@ export function useTranscriptionPrefs() {
         autoGenerateNote, setAutoGenerateNote,
         noteStyle, setNoteStyle,
         noteScreenshotDensity, setNoteScreenshotDensity,
+        noteUserPrompt, setNoteUserPrompt,
         saveAll,
     }
 }

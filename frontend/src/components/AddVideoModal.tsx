@@ -4,6 +4,7 @@ import { transcribeBilibili, transcribeYoutube, transcribeDouyin, transcribeXiao
 import type { Prompt } from '../api/types'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 import { useTranscriptionPrefs } from '../hooks/useTranscriptionPrefs'
+import { useNotePromptPresets } from '../hooks/useNotePromptPresets'
 import Icons from './ui/Icons'
 
 interface AddVideoModalProps {
@@ -79,7 +80,8 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
     const [clipboardHint, setClipboardHint] = useState('')
     const [prompts, setPrompts] = useState<Prompt[]>([])
     const prefs = useTranscriptionPrefs()
-    const { language, setLanguage, subtitleMode, setSubtitleMode, outputFormat, setOutputFormat, autoAnalyze, setAutoAnalyze, selectedPromptId, setSelectedPromptId, stripSubtitle, setStripSubtitle, autoGenerateNote, setAutoGenerateNote, noteStyle, setNoteStyle, noteScreenshotDensity, setNoteScreenshotDensity, saveAll } = prefs
+    const { language, setLanguage, subtitleMode, setSubtitleMode, outputFormat, setOutputFormat, autoAnalyze, setAutoAnalyze, selectedPromptId, setSelectedPromptId, stripSubtitle, setStripSubtitle, autoGenerateNote, setAutoGenerateNote, noteStyle, setNoteStyle, noteScreenshotDensity, setNoteScreenshotDensity, noteUserPrompt, setNoteUserPrompt, saveAll } = prefs
+    const { presets: notePromptPresets, savePreset: saveNotePreset, openManager: openNotePromptManager } = useNotePromptPresets()
     const inputRef = useRef<HTMLInputElement>(null)
 
     // Load prompts
@@ -205,6 +207,7 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                 auto_generate_note: autoGenerateNote || undefined,
                 auto_note_style: autoGenerateNote ? noteStyle : undefined,
                 auto_note_screenshot_density: autoGenerateNote && noteScreenshotDensity ? noteScreenshotDensity : undefined,
+                auto_note_user_prompt: autoGenerateNote && noteUserPrompt.trim() ? noteUserPrompt.trim() : undefined,
             }
 
             if (platform === 'bilibili') {
@@ -581,6 +584,60 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
                                     {noteScreenshotDensity && (
                                         <p className="text-[10px] text-[var(--color-text-muted)] leading-tight">{t('addVideo.noteScreenshotHint')}</p>
                                     )}
+
+                                    {/* Note add-on instruction */}
+                                    <div className="space-y-1 pt-1">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] text-[var(--color-text-muted)]">{t('detail.aiNotes.customPrompt')}</label>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={openNotePromptManager}
+                                                    className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1"
+                                                    title={t('detail.aiNotes.promptManagePresets')}
+                                                >
+                                                    <Icons.Settings className="w-3 h-3" />
+                                                    {t('detail.aiNotes.promptManagePresets')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={!noteUserPrompt.trim()}
+                                                    onClick={() => saveNotePreset(noteUserPrompt)}
+                                                    className="text-[10px] text-[var(--color-primary)] hover:underline disabled:text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:hover:no-underline flex items-center gap-1"
+                                                    title={noteUserPrompt.trim() ? t('detail.aiNotes.promptSaveAs') : t('detail.aiNotes.promptSaveAsDisabled')}
+                                                >
+                                                    <Icons.Bookmark className="w-3 h-3" />
+                                                    {t('detail.aiNotes.promptSaveAs')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <select
+                                            value=""
+                                            disabled={notePromptPresets.length === 0}
+                                            onChange={e => {
+                                                const id = Number(e.target.value)
+                                                const p = notePromptPresets.find(np => np.id === id)
+                                                if (p) setNoteUserPrompt(p.content)
+                                            }}
+                                            className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
+                                        >
+                                            <option value="">
+                                                {notePromptPresets.length === 0
+                                                    ? t('detail.aiNotes.promptPresetEmpty')
+                                                    : t('detail.aiNotes.promptPresetSelect')}
+                                            </option>
+                                            {notePromptPresets.map(p => (
+                                                <option key={p.id} value={p.id} title={p.content}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                        <textarea
+                                            value={noteUserPrompt}
+                                            onChange={e => setNoteUserPrompt(e.target.value)}
+                                            placeholder={t('detail.aiNotes.customPromptPlaceholder')}
+                                            rows={2}
+                                            className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm resize-none focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </div>

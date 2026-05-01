@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -15,7 +15,11 @@ import Icons from '../ui/Icons'
 import ConfirmModal from '../ConfirmModal'
 import PromptFormModal from './PromptFormModal'
 
-export default function PromptTab() {
+interface PromptTabProps {
+    initialCategoryKey?: string
+}
+
+export default function PromptTab({ initialCategoryKey }: PromptTabProps = {}) {
     const { t } = useTranslation()
     const queryClient = useQueryClient()
     const { showUndoableDelete, showToast } = useToast()
@@ -39,6 +43,13 @@ export default function PromptTab() {
         queryKey: ['categories'],
         queryFn: getCategories,
     })
+
+    // Auto-select category from deep-link key on first load
+    useEffect(() => {
+        if (!initialCategoryKey || !categories) return
+        const cat = categories.find(c => c.key === initialCategoryKey)
+        if (cat) setSelectedCategory(cat.id)
+    }, [initialCategoryKey, categories])
 
     const deletePromptMutation = useMutation({
         mutationFn: deletePrompt,

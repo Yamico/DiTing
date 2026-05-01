@@ -44,6 +44,7 @@ async def transcribe_file(
     auto_generate_note: bool = Form(False),
     auto_note_style: str = Form(None),
     auto_note_screenshot_density: str = Form(None),
+    auto_note_user_prompt: str = Form(None),
     output_format: str = Form(None)
 ):
     """Transcribe an uploaded audio/video file."""
@@ -53,6 +54,7 @@ async def transcribe_file(
             file, source, task_type, language, prompt,
             auto_analyze_prompt, auto_analyze_prompt_id, auto_analyze_strip_subtitle,
             auto_generate_note, auto_note_style, auto_note_screenshot_density,
+            auto_note_user_prompt,
             output_format
         )
         file_path = params.get('file_path')

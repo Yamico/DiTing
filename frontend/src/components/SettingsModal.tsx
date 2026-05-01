@@ -10,14 +10,16 @@ import AboutTab from './settings/AboutTab'
 
 interface SettingsModalProps {
     onClose: () => void
+    initialTab?: Tab
+    initialCategoryKey?: string
 }
 
 type Tab = 'llm' | 'asr' | 'prompt' | 'system' | 'about'
 
-export default function SettingsModal({ onClose }: SettingsModalProps) {
+export default function SettingsModal({ onClose, initialTab, initialCategoryKey }: SettingsModalProps) {
     const { t } = useTranslation()
     useEscapeKey(onClose)
-    const [activeTab, setActiveTab] = useState<Tab>('asr')
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'asr')
 
     const tabs = [
         { key: 'asr', label: t('settings.tabs.asr'), icon: Icons.Music },
@@ -68,7 +70,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 <div className="flex-1 overflow-y-auto p-6">
                     {activeTab === 'asr' && <ASRTab />}
                     {activeTab === 'llm' && <LLMTab />}
-                    {activeTab === 'prompt' && <PromptTab />}
+                    {activeTab === 'prompt' && <PromptTab initialCategoryKey={initialCategoryKey} />}
                     {activeTab === 'system' && <SystemTab onClose={onClose} />}
                     {activeTab === 'about' && <AboutTab />}
                 </div>

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Detail from './pages/Detail'
 import Management from './pages/Management'
 import AppLayout from './components/AppLayout'
+import SettingsModalRoot from './components/SettingsModalRoot'
 
 function App() {
     const { t, i18n } = useTranslation()
@@ -26,6 +27,7 @@ function App() {
                     {/* Detail has its own header */}
                     <Route path="/detail/:sourceId" element={<Detail />} />
                 </Routes>
+                <SettingsModalRoot />
             </BrowserRouter>
         </ToastProvider>
     )

@@ -10,12 +10,12 @@ import type { Segment, VideoNote, LLMProvider, Task, Video, Prompt } from '../ap
 import {
     getNotes, generateNote, updateNote, resetNote, activateNote, deleteNote,
     getLLMProviders, getTasks, cancelTask, retranscribe, uploadNoteScreenshot,
-    getPrompts, createPrompt, getCategories,
 } from '../api/client'
 import { useToast } from '../contexts/ToastContext'
 import Icons from './ui/Icons'
 import { preprocessLaTeX } from '../utils/markdown'
 import { useNoteStreamObserver } from '../hooks/useNoteStreamObserver'
+import { useNotePromptPresets } from '../hooks/useNotePromptPresets'
 
 interface NoteViewProps {
     sourceId: string
@@ -382,6 +382,7 @@ function GeneratePanel({
     setCustomPrompt,
     notePrompts,
     onSavePromptAsPreset,
+    onOpenPromptManager,
     showGenStages,
     setShowGenStages,
 }: {
@@ -403,7 +404,8 @@ function GeneratePanel({
     customPrompt: string
     setCustomPrompt: (v: string) => void
     notePrompts: Prompt[]
-    onSavePromptAsPreset: (name: string, content: string) => void
+    onSavePromptAsPreset: (currentText: string) => void
+    onOpenPromptManager: () => void
     showGenStages: boolean
     setShowGenStages: (v: boolean) => void
 }) {
@@ -506,41 +508,47 @@ function GeneratePanel({
                     <div className="note-gen-field" style={{ flexBasis: '100%' }}>
                         <div className="flex items-center justify-between mb-1">
                             <label className="note-gen-label" style={{ marginBottom: 0 }}>{t('detail.aiNotes.customPrompt')}</label>
-                            {customPrompt.trim() && (
+                            <div className="flex items-center gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        const trimmed = customPrompt.trim()
-                                        if (!trimmed) return
-                                        const name = window.prompt(t('detail.aiNotes.promptSavePromptName'), trimmed.slice(0, 30))
-                                        if (name && name.trim()) {
-                                            onSavePromptAsPreset(name.trim(), trimmed)
-                                        }
-                                    }}
-                                    className="text-[11px] text-[var(--color-primary)] hover:underline flex items-center gap-1"
-                                    title={t('detail.aiNotes.promptSaveAs')}
+                                    onClick={onOpenPromptManager}
+                                    className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1"
+                                    title={t('detail.aiNotes.promptManagePresets')}
+                                >
+                                    <Icons.Settings className="w-3 h-3" />
+                                    {t('detail.aiNotes.promptManagePresets')}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={!customPrompt.trim()}
+                                    onClick={() => onSavePromptAsPreset(customPrompt)}
+                                    className="text-[11px] text-[var(--color-primary)] hover:underline disabled:text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:hover:no-underline flex items-center gap-1"
+                                    title={customPrompt.trim() ? t('detail.aiNotes.promptSaveAs') : t('detail.aiNotes.promptSaveAsDisabled')}
                                 >
                                     <Icons.Bookmark className="w-3 h-3" />
                                     {t('detail.aiNotes.promptSaveAs')}
                                 </button>
-                            )}
+                            </div>
                         </div>
-                        {notePrompts.length > 0 && (
-                            <select
-                                className="note-gen-select mb-2"
-                                value=""
-                                onChange={e => {
-                                    const id = Number(e.target.value)
-                                    const p = notePrompts.find(np => np.id === id)
-                                    if (p) setCustomPrompt(p.content)
-                                }}
-                            >
-                                <option value="">{t('detail.aiNotes.promptPresetSelect')}</option>
-                                {notePrompts.map(p => (
-                                    <option key={p.id} value={p.id} title={p.content}>{p.name}</option>
-                                ))}
-                            </select>
-                        )}
+                        <select
+                            className="note-gen-select mb-2"
+                            value=""
+                            disabled={notePrompts.length === 0}
+                            onChange={e => {
+                                const id = Number(e.target.value)
+                                const p = notePrompts.find(np => np.id === id)
+                                if (p) setCustomPrompt(p.content)
+                            }}
+                        >
+                            <option value="">
+                                {notePrompts.length === 0
+                                    ? t('detail.aiNotes.promptPresetEmpty')
+                                    : t('detail.aiNotes.promptPresetSelect')}
+                            </option>
+                            {notePrompts.map(p => (
+                                <option key={p.id} value={p.id} title={p.content}>{p.name}</option>
+                            ))}
+                        </select>
                         <textarea
                             className="note-gen-textarea"
                             value={customPrompt}
@@ -754,32 +762,8 @@ export default function NoteView({
         queryFn: getLLMProviders,
     })
 
-    // Note add-on prompts (saved presets, filtered by category_key === 'note_addon')
-    const { data: allPrompts = [] } = useQuery<Prompt[]>({
-        queryKey: ['prompts'],
-        queryFn: getPrompts,
-    })
-    const { data: allCategories = [] } = useQuery({
-        queryKey: ['prompt_categories'],
-        queryFn: getCategories,
-    })
-    const notePromptCategoryId = useMemo(
-        () => allCategories.find(c => c.key === 'note_addon')?.id ?? null,
-        [allCategories]
-    )
-    const notePrompts = useMemo(
-        () => allPrompts.filter(p => p.category_key === 'note_addon'),
-        [allPrompts]
-    )
-    const savePromptMut = useMutation({
-        mutationFn: ({ name, content }: { name: string; content: string }) =>
-            createPrompt(name, content, notePromptCategoryId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['prompts'] })
-            showToast('success', t('detail.aiNotes.promptSavedSuccess'))
-        },
-        onError: () => showToast('error', t('detail.aiNotes.promptSaveFailed')),
-    })
+    // Note add-on prompt presets (saved under category_key === 'note_addon')
+    const { presets: notePrompts, savePreset, openManager } = useNotePromptPresets()
 
     const activeNote = notes.find(n => n.is_active) ?? notes[0] ?? null
 
@@ -1639,7 +1623,8 @@ export default function NoteView({
                     customPrompt={customPrompt}
                     setCustomPrompt={setCustomPrompt}
                     notePrompts={notePrompts}
-                    onSavePromptAsPreset={(name, content) => savePromptMut.mutate({ name, content })}
+                    onSavePromptAsPreset={savePreset}
+                    onOpenPromptManager={openManager}
                     showGenStages={showGenStages}
                     setShowGenStages={setShowGenStages}
                 />

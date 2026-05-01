@@ -34,6 +34,7 @@ async def run_transcription_pipeline(
     auto_generate_note: bool = False,
     auto_note_style: str = None,
     auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None,
 ):
     """
     Unified transcription pipeline.
@@ -102,7 +103,8 @@ async def run_transcription_pipeline(
                     if auto_generate_note:
                         await _trigger_auto_note(
                             transcription_id, auto_note_style,
-                            auto_note_screenshot_density, source_label
+                            auto_note_screenshot_density, auto_note_user_prompt,
+                            source_label
                         )
 
                     return
@@ -159,7 +161,8 @@ async def run_transcription_pipeline(
         if auto_generate_note:
             await _trigger_auto_note(
                 transcription_id, auto_note_style,
-                auto_note_screenshot_density, source_label
+                auto_note_screenshot_density, auto_note_user_prompt,
+                source_label
             )
 
         task_manager.finish_task(transcription_id)
@@ -293,6 +296,7 @@ async def _trigger_auto_note(
     transcription_id: int,
     style: Optional[str],
     screenshot_density: Optional[str],
+    user_prompt: Optional[str],
     source_label: str,
 ):
     """Shared helper to trigger AI note generation after transcription completion."""
@@ -320,6 +324,8 @@ async def _trigger_auto_note(
         return
 
     base_prompt = build_note_prompt(style, screenshot_density)
+    if user_prompt and user_prompt.strip():
+        base_prompt += f"\n\n**用户附加指令：**\n{user_prompt.strip()}"
 
     # Resolve title for task center
     title = source_label
@@ -348,7 +354,7 @@ async def _trigger_auto_note(
             llm_model_id=None,
             style=style,
             screenshot_density=screenshot_density,
-            user_prompt=None,
+            user_prompt=user_prompt,
             transcription_version=None,
             trace_id_token=trace_id,
         )

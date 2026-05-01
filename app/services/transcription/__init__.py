@@ -33,7 +33,8 @@ async def process_bilibili_transcription(
     auto_analyze_strip_subtitle: bool = True,
     auto_generate_note: bool = False,
     auto_note_style: str = None,
-    auto_note_screenshot_density: str = None
+    auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None
 ):
     """Process a Bilibili video for transcription"""
     # Create progress helper for downloader
@@ -112,7 +113,8 @@ async def process_bilibili_transcription(
         auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
         auto_generate_note=auto_generate_note,
         auto_note_style=auto_note_style,
-        auto_note_screenshot_density=auto_note_screenshot_density
+        auto_note_screenshot_density=auto_note_screenshot_density,
+        auto_note_user_prompt=auto_note_user_prompt
     )
 
 async def process_youtube_transcription(
@@ -130,7 +132,8 @@ async def process_youtube_transcription(
     auto_analyze_strip_subtitle: bool = True,
     auto_generate_note: bool = False,
     auto_note_style: str = None,
-    auto_note_screenshot_density: str = None
+    auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None
 ):
     """Process a YouTube video for transcription"""
     from app.core.config import settings
@@ -183,7 +186,8 @@ async def process_youtube_transcription(
         auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
         auto_generate_note=auto_generate_note,
         auto_note_style=auto_note_style,
-        auto_note_screenshot_density=auto_note_screenshot_density
+        auto_note_screenshot_density=auto_note_screenshot_density,
+        auto_note_user_prompt=auto_note_user_prompt
     )
 
 async def process_douyin_transcription(
@@ -200,7 +204,8 @@ async def process_douyin_transcription(
     auto_analyze_strip_subtitle: bool = True,
     auto_generate_note: bool = False,
     auto_note_style: str = None,
-    auto_note_screenshot_density: str = None
+    auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None
 ):
     """Process a Douyin video for transcription"""
     dl_progress = ProgressHelper(task_manager, transcription_id, 0, 30)
@@ -228,7 +233,8 @@ async def process_douyin_transcription(
         auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
         auto_generate_note=auto_generate_note,
         auto_note_style=auto_note_style,
-        auto_note_screenshot_density=auto_note_screenshot_density
+        auto_note_screenshot_density=auto_note_screenshot_density,
+        auto_note_user_prompt=auto_note_user_prompt
     )
 
 async def process_xiaohongshu_transcription(
@@ -245,7 +251,8 @@ async def process_xiaohongshu_transcription(
     auto_analyze_strip_subtitle: bool = True,
     auto_generate_note: bool = False,
     auto_note_style: str = None,
-    auto_note_screenshot_density: str = None
+    auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None
 ):
     """Process a Xiaohongshu video for transcription"""
     dl_progress = ProgressHelper(task_manager, transcription_id, 0, 30)
@@ -271,7 +278,8 @@ async def process_xiaohongshu_transcription(
         auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
         auto_generate_note=auto_generate_note,
         auto_note_style=auto_note_style,
-        auto_note_screenshot_density=auto_note_screenshot_density
+        auto_note_screenshot_density=auto_note_screenshot_density,
+        auto_note_user_prompt=auto_note_user_prompt
     )
 
 async def process_network_transcription(
@@ -290,7 +298,8 @@ async def process_network_transcription(
     auto_analyze_strip_subtitle: bool = True,
     auto_generate_note: bool = False,
     auto_note_style: str = None,
-    auto_note_screenshot_density: str = None
+    auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None
 ):
     """Process a direct network URL for transcription"""
     dl_progress = ProgressHelper(task_manager, transcription_id, 0, 30)
@@ -314,7 +323,8 @@ async def process_network_transcription(
         auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
         auto_generate_note=auto_generate_note,
         auto_note_style=auto_note_style,
-        auto_note_screenshot_density=auto_note_screenshot_density
+        auto_note_screenshot_density=auto_note_screenshot_density,
+        auto_note_user_prompt=auto_note_user_prompt
     )
 
 async def process_file_transcription(
@@ -336,7 +346,8 @@ async def process_file_transcription(
     auto_analyze_strip_subtitle: bool = True,
     auto_generate_note: bool = False,
     auto_note_style: str = None,
-    auto_note_screenshot_density: str = None
+    auto_note_screenshot_density: str = None,
+    auto_note_user_prompt: str = None
 ):
     """Process a local file upload for transcription"""
     # File is already on disk.
@@ -368,5 +379,6 @@ async def process_file_transcription(
         auto_analyze_strip_subtitle=auto_analyze_strip_subtitle,
         auto_generate_note=auto_generate_note,
         auto_note_style=auto_note_style,
-        auto_note_screenshot_density=auto_note_screenshot_density
+        auto_note_screenshot_density=auto_note_screenshot_density,
+        auto_note_user_prompt=auto_note_user_prompt
     )

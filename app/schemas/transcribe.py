@@ -31,6 +31,7 @@ class TranscribeBilibiliRequest(BaseModel):
     auto_generate_note: bool = Field(False, description="Generate AI note after transcription completes")
     auto_note_style: Optional[str] = Field(None, description="Note style: concise | detailed | outline")
     auto_note_screenshot_density: Optional[str] = Field(None, description="Screenshot density: few | moderate | dense")
+    auto_note_user_prompt: Optional[str] = Field(None, description="Additional instruction appended to the built-in note prompt")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
 
     # Time range (optional)
@@ -58,6 +59,7 @@ class TranscribeYouTubeRequest(BaseModel):
     auto_generate_note: bool = Field(False, description="Generate AI note after transcription completes")
     auto_note_style: Optional[str] = Field(None, description="Note style: concise | detailed | outline")
     auto_note_screenshot_density: Optional[str] = Field(None, description="Screenshot density: few | moderate | dense")
+    auto_note_user_prompt: Optional[str] = Field(None, description="Additional instruction appended to the built-in note prompt")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
     bookmark_only: bool = Field(False, description="Save metadata only, do not trigger transcription")
     only_get_subtitles: bool = Field(False, description="Fail if subtitles are not available")
@@ -103,6 +105,7 @@ class TranscribeFileRequest(BaseModel):
     auto_generate_note: bool = Field(False, description="Generate AI note after transcription completes")
     auto_note_style: Optional[str] = Field(None, description="Note style: concise | detailed | outline")
     auto_note_screenshot_density: Optional[str] = Field(None, description="Screenshot density: few | moderate | dense")
+    auto_note_user_prompt: Optional[str] = Field(None, description="Additional instruction appended to the built-in note prompt")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
 
 
@@ -124,6 +127,7 @@ class TranscribeDouyinRequest(BaseModel):
     auto_generate_note: bool = Field(False, description="Generate AI note after transcription completes")
     auto_note_style: Optional[str] = Field(None, description="Note style: concise | detailed | outline")
     auto_note_screenshot_density: Optional[str] = Field(None, description="Screenshot density: few | moderate | dense")
+    auto_note_user_prompt: Optional[str] = Field(None, description="Additional instruction appended to the built-in note prompt")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
     bookmark_only: bool = Field(False, description="Save metadata only, do not trigger transcription")
     only_get_subtitles: bool = Field(False, description="Fail if subtitles are not available")
@@ -148,6 +152,7 @@ class TranscribeXiaohongshuRequest(BaseModel):
     auto_generate_note: bool = Field(False, description="Generate AI note after transcription completes")
     auto_note_style: Optional[str] = Field(None, description="Note style: concise | detailed | outline")
     auto_note_screenshot_density: Optional[str] = Field(None, description="Screenshot density: few | moderate | dense")
+    auto_note_user_prompt: Optional[str] = Field(None, description="Additional instruction appended to the built-in note prompt")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
     bookmark_only: bool = Field(False, description="Save metadata only, do not trigger transcription")
     only_get_subtitles: bool = Field(False, description="Fail if subtitles are not available")
@@ -165,6 +170,7 @@ class RetranscribeRequest(BaseModel):
     auto_generate_note: bool = Field(False, description="Generate AI note after transcription completes")
     auto_note_style: Optional[str] = Field(None, description="Note style: concise | detailed | outline")
     auto_note_screenshot_density: Optional[str] = Field(None, description="Screenshot density: few | moderate | dense")
+    auto_note_user_prompt: Optional[str] = Field(None, description="Additional instruction appended to the built-in note prompt")
     output_format: Optional[str] = Field(None, description="Output format: text, srt, srt_char")
     only_get_subtitles: bool = Field(False, description="Fail if subtitles are not available")
     force_transcription: bool = Field(False, description="Ignore subtitles and force ASR")
