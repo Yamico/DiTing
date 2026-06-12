@@ -10,6 +10,7 @@ from app.downloaders._utils import (
     make_progress_hook,
     find_downloaded_file,
     get_video_format_string,
+    parse_max_height,
     check_and_reraise_cancel,
     safe_cleanup,
     retry_on_network_error,
@@ -39,6 +40,15 @@ def _cleanup_cookie_file(cookie_file):
             os.remove(cookie_file)
         except OSError:
             pass
+
+
+def _get_max_resolution_config():
+    """Read the global `max_resolution` config (raw string), or None if unset."""
+    try:
+        from app.db import get_system_config
+        return get_system_config('max_resolution')
+    except Exception:
+        return None
 
 
 def _is_format_error(e):
@@ -141,6 +151,145 @@ def get_youtube_info(url, proxy=None):
         _cleanup_cookie_file(cookie_file)
 
 
+# In-memory TTL cache for format probes, to avoid re-hitting YouTube (rate limits)
+# when the user opens the picker repeatedly. Keyed by URL -> (timestamp, result).
+_PROBE_CACHE = {}
+_PROBE_TTL_SECONDS = 300
+
+# Standard resolution rungs to surface in the picker (descending).
+_RESOLUTION_LADDER = [1080, 720, 480, 360]
+
+
+def _stream_size_bytes(fmt, duration):
+    """Best-effort byte size of a single stream: exact filesize, approx, or bitrate*duration."""
+    size = fmt.get('filesize') or fmt.get('filesize_approx')
+    if size:
+        return int(size), True
+    tbr = fmt.get('tbr')  # total bitrate, kbit/s
+    if tbr and duration:
+        return int(tbr * 1000 / 8 * duration), False
+    return 0, False
+
+
+def _pick_video_at_height(video_formats, height):
+    """Among formats at a given height, prefer H.264 (avc1, what we download), then highest bitrate."""
+    same = [f for f in video_formats if f.get('height') == height]
+    if not same:
+        return None
+    return max(same, key=lambda f: (str(f.get('vcodec') or '').startswith('avc'), f.get('tbr') or 0))
+
+
+def _pick_best_audio(audio_formats):
+    """Pick the highest-bitrate audio-only stream."""
+    if not audio_formats:
+        return None
+    return max(audio_formats, key=lambda f: (f.get('abr') or f.get('tbr') or 0))
+
+
+def probe_youtube_formats(url, proxy=None):
+    """
+    Inspect a YouTube video and return the concrete download options available,
+    grouped into resolution tiers with approximate file sizes. Result is cached
+    for a few minutes to avoid hammering YouTube (which rate-limits aggressively).
+
+    Returns a dict:
+        {
+          "title": str,
+          "duration": int | None,
+          "tiers": [{"quality","label","height","fps","approx_bytes","exact"}, ...],
+          "audio": {"quality":"audio","label","approx_bytes","exact"} | None
+        }
+    or None on failure.
+    """
+    cached = _PROBE_CACHE.get(url)
+    if cached and (time.time() - cached[0]) < _PROBE_TTL_SECONDS:
+        return cached[1]
+
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'skip_download': True,
+        'ignore_no_formats_error': True,
+        'proxy': proxy,
+    }
+    cookie_file = _get_youtube_cookies()
+    if cookie_file:
+        ydl_opts['cookiefile'] = cookie_file
+
+    def _extract():
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(url, download=False)
+
+    try:
+        try:
+            info = _extract()
+        except Exception as e:
+            # Bad cookies can cause format errors — retry once without them
+            if cookie_file and _is_format_error(e):
+                logger.warning(f"⚠️ Format probe error with cookies ({e}), retrying without cookies...")
+                ydl_opts.pop('cookiefile', None)
+                info = _extract()
+            else:
+                raise
+
+        formats = info.get('formats') or []
+        duration = info.get('duration')
+
+        video_formats = [f for f in formats if f.get('vcodec') not in (None, 'none') and f.get('height')]
+        audio_formats = [f for f in formats if f.get('acodec') not in (None, 'none') and f.get('vcodec') in (None, 'none')]
+        best_audio = _pick_best_audio(audio_formats)
+        audio_bytes, audio_exact = _stream_size_bytes(best_audio, duration) if best_audio else (0, False)
+
+        heights = sorted({f['height'] for f in video_formats}, reverse=True)
+        target_heights = [h for h in heights if h in _RESOLUTION_LADDER]
+        # Always surface the true max if it's above our ladder (e.g. 1440p/2160p)
+        if heights and heights[0] > _RESOLUTION_LADDER[0]:
+            target_heights = [heights[0]] + target_heights
+        # If nothing matched the ladder (only very low res), fall back to the max available
+        if not target_heights and heights:
+            target_heights = [heights[0]]
+        target_heights = sorted(set(target_heights), reverse=True)
+
+        tiers = []
+        for h in target_heights:
+            vf = _pick_video_at_height(video_formats, h)
+            if not vf:
+                continue
+            v_bytes, v_exact = _stream_size_bytes(vf, duration)
+            tiers.append({
+                "quality": str(h),
+                "label": f"{h}p",
+                "height": h,
+                "fps": vf.get('fps'),
+                "approx_bytes": (v_bytes + audio_bytes) if v_bytes else 0,
+                "exact": bool(v_exact and (audio_exact or not best_audio)),
+            })
+
+        audio_tier = None
+        if best_audio:
+            audio_tier = {
+                "quality": "audio",
+                "label": "Audio",
+                "approx_bytes": audio_bytes,
+                "exact": audio_exact,
+            }
+
+        result = {
+            "title": info.get('title'),
+            "duration": duration,
+            "tiers": tiers,
+            "audio": audio_tier,
+        }
+        _PROBE_CACHE[url] = (time.time(), result)
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ Format probe failed for {url}: {e}")
+        return None
+    finally:
+        _cleanup_cookie_file(cookie_file)
+
+
 def download_youtube_video(url, output_dir=None, proxy=None, task_id=None, check_cancel_func=None, progress_callback=None):
     """
     Download YouTube video as audio (m4a/best audio) for ASR.
@@ -214,8 +363,9 @@ def download_youtube_media(url, quality='best', output_dir=None, proxy=None, tas
     output_template = os.path.join(output_dir, f"{filename_base}.%(ext)s")
 
     cookie_file = _get_youtube_cookies()
+    max_height = parse_max_height(_get_max_resolution_config())
     ydl_opts = {
-        'format': get_video_format_string(quality),
+        'format': get_video_format_string(quality, max_height=max_height),
         'outtmpl': output_template,
         'merge_output_format': 'mp4',
         'quiet': True,
@@ -244,7 +394,7 @@ def download_youtube_media(url, quality='best', output_dir=None, proxy=None, tas
             logger.warning(f"⚠️ yt-dlp video format error (original: {e}), retrying with fallback format...")
             filename_base2 = str(uuid.uuid4())
             ydl_opts['outtmpl'] = os.path.join(output_dir, f"{filename_base2}.%(ext)s")
-            ydl_opts['format'] = 'worst' if quality == 'worst' else 'best'
+            ydl_opts['format'] = 'worst' if quality == 'worst' else get_video_format_string('best', max_height=max_height)
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.extract_info(url, download=True)

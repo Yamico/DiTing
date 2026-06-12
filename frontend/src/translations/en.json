@@ -337,7 +337,19 @@
             "ytCookieHint": "Required for accessing age-restricted, region-locked, or member-only videos. Export YouTube cookies using a browser extension (e.g. Get cookies.txt LOCALLY) and paste the full content here. Leave blank to skip.",
             "ytCookieSaved": "YouTube cookie saved",
             "ytCookieSaveFailed": "Failed to save",
-            "featureToggleTitle": "Feature Toggles"
+            "featureToggleTitle": "Feature Toggles",
+            "maxResTitle": "Default Max Resolution",
+            "maxResHint": "Caps the resolution used by \"Best Quality\" downloads to avoid huge 4K/8K files. Ignored when you pick a specific resolution.",
+            "maxResSaved": "Default resolution saved",
+            "maxResSaveFailed": "Failed to save",
+            "maxRes": {
+                "480": "480p",
+                "720": "720p",
+                "1080": "1080p (Recommended)",
+                "1440": "2K (1440p)",
+                "2160": "4K (2160p)",
+                "unlimited": "Unlimited (Best available)"
+            }
         },
         "about": {
             "title": "About",
@@ -443,7 +455,10 @@
             "moderate": "Moderate",
             "dense": "Dense"
         },
-        "noteScreenshotHint": "Requires local video cache to capture frames"
+        "noteScreenshotHint": "Requires local video cache to capture frames",
+        "probeFormats": "Detect available qualities",
+        "probing": "Detecting…",
+        "probeSizeHint": "Sizes are estimates; the actual file may differ slightly."
     },
     "retranscribeModal": {
         "newSegmentHint": "A new transcription record will be created, existing content won't be overwritten",

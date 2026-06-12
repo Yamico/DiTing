@@ -10,6 +10,7 @@ from app.downloaders._utils import (
     make_progress_hook,
     find_downloaded_file,
     get_video_format_string,
+    parse_max_height,
     check_and_reraise_cancel,
     safe_cleanup,
     retry_on_network_error,
@@ -131,8 +132,11 @@ def download_bilibili_video(url, quality='best', task_id=None, check_cancel_func
 
         sessdata = _get_sessdata()
 
+        from app.db import get_system_config
+        max_height = parse_max_height(get_system_config('max_resolution'))
+
         ydl_opts = {
-            'format': get_video_format_string(quality),
+            'format': get_video_format_string(quality, max_height=max_height),
             'outtmpl': output_template,
             'merge_output_format': 'mp4',
             'quiet': True,

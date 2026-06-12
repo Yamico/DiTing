@@ -342,7 +342,19 @@
             "ytCookieHint": "用于访问年龄限制、地区限制或会员视频。使用浏览器插件（如 Get cookies.txt LOCALLY）导出 youtube.com 的 Cookie，粘贴完整内容到此处。留空则不使用 Cookie。",
             "ytCookieSaved": "YouTube Cookie 已保存",
             "ytCookieSaveFailed": "保存失败",
-            "featureToggleTitle": "功能开关"
+            "featureToggleTitle": "功能开关",
+            "maxResTitle": "默认最高画质",
+            "maxResHint": "限制“最佳画质”下载时的分辨率上限，避免 4K/8K 产生超大文件。选择具体清晰度时不受此限制。",
+            "maxResSaved": "已保存默认画质",
+            "maxResSaveFailed": "保存失败",
+            "maxRes": {
+                "480": "480p",
+                "720": "720p",
+                "1080": "1080p（推荐）",
+                "1440": "2K (1440p)",
+                "2160": "4K (2160p)",
+                "unlimited": "不限制（最高画质）"
+            }
         },
         "about": {
             "title": "关于",
@@ -447,7 +459,10 @@
             "moderate": "适中",
             "dense": "密集"
         },
-        "noteScreenshotHint": "需要本地视频缓存才能截图"
+        "noteScreenshotHint": "需要本地视频缓存才能截图",
+        "probeFormats": "检测可用清晰度",
+        "probing": "检测中…",
+        "probeSizeHint": "文件大小为预估值，实际可能略有差异。"
     },
     "retranscribeModal": {
         "newSegmentHint": "将创建新的转录记录，不会覆盖已有内容",

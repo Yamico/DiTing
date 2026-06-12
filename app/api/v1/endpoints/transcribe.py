@@ -6,6 +6,7 @@ Business logic lives in app/services/transcription/request_service.py.
 import os
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form
+from pydantic import BaseModel
 
 from app.core.logger import logger
 from app.services.transcription.dispatcher import create_and_dispatch
@@ -28,6 +29,36 @@ from app.schemas import (
 )
 
 router = APIRouter(tags=["Transcribe"])
+
+
+class ProbeFormatsRequest(BaseModel):
+    url: str
+
+
+@router.post("/transcribe/probe-formats")
+async def probe_formats(req: ProbeFormatsRequest):
+    """
+    Probe a video URL for the concrete download qualities available (resolution
+    tiers + approximate sizes), so the user can pick before downloading.
+    Currently supported for YouTube; other platforms should use the static labels.
+    """
+    from starlette.concurrency import run_in_threadpool
+    from app.db import get_system_config
+    from app.utils.source_utils import infer_source_type
+
+    url = (req.url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing url")
+
+    if infer_source_type(url) != 'youtube':
+        raise HTTPException(status_code=422, detail="Format probing is only supported for YouTube")
+
+    from app.downloaders.youtube import probe_youtube_formats
+    proxy = get_system_config('proxy_url')
+    result = await run_in_threadpool(probe_youtube_formats, url, proxy)
+    if not result or not result.get('tiers'):
+        raise HTTPException(status_code=422, detail="Could not retrieve available qualities for this video")
+    return result
 
 
 @router.post("/transcribe")

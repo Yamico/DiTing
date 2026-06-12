@@ -31,10 +31,12 @@ async def get_system_settings():
     proxy_url = get_system_config('proxy_url')
     bilibili_sessdata = get_system_config('bilibili_sessdata')
     youtube_cookies = get_system_config('youtube_cookies')
+    max_resolution = get_system_config('max_resolution')
     return {
-        "proxy_url": proxy_url, 
+        "proxy_url": proxy_url,
         "bilibili_sessdata": bilibili_sessdata,
-        "youtube_cookies": youtube_cookies
+        "youtube_cookies": youtube_cookies,
+        "max_resolution": max_resolution
     }
 
 

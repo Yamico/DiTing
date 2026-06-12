@@ -74,12 +74,55 @@ def find_downloaded_file(download_dir, filename_base, expected_ext=None):
     return None
 
 
-def get_video_format_string(quality='best'):
+def _height_capped_format(height):
     """
-    Map quality label to yt-dlp format string.
+    Build a yt-dlp format string capped at a maximum resolution `height`.
+    Prefers H.264 (avc1) + m4a for broad compatibility, then falls back through
+    progressively looser constraints, and finally to any format at/under the cap.
+    """
+    return (
+        f'bestvideo[height<={height}][vcodec^=avc]+bestaudio[ext=m4a]'
+        f'/bestvideo[height<={height}][vcodec^=avc]+bestaudio'
+        f'/bestvideo[height<={height}]+bestaudio[ext=m4a]'
+        f'/bestvideo[height<={height}]+bestaudio'
+        f'/best[height<={height}]'
+        f'/best'
+    )
+
+
+def parse_max_height(value, default=1080):
+    """
+    Parse a stored `max_resolution` config value into an int height cap.
+    Returns None (uncapped) for empty / 'unlimited' / '0' / 'none', otherwise the int.
+    `default` is used only when value is None (config never set).
+    """
+    if value is None:
+        return default
+    s = str(value).strip().lower().replace('p', '')
+    if s in ('', 'unlimited', '0', 'none', 'best', 'max'):
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        return default
+
+
+def get_video_format_string(quality='best', max_height=None):
+    """
+    Map a quality label to a yt-dlp format string.
     Prefers H.264 (avc1) for iOS compatibility, with fallback to any codec.
-    Multiple fallback chains ensure compatibility with VP9/AV1-only videos (e.g. YouTube).
+
+    `quality` may be:
+      - a numeric resolution string ('1080', '720', '480') -> capped at that height
+      - 'best' (default)  -> capped at `max_height` if provided, else uncapped
+      - 'medium'          -> capped at 720p
+      - 'worst'           -> lowest available
+    `max_height` is the global default cap, applied only to 'best'.
     """
+    # Explicit numeric resolution (e.g. '1080', '720', '480') — user picked a tier
+    if isinstance(quality, str) and quality.isdigit():
+        return _height_capped_format(int(quality))
+
     if quality == 'worst':
         return (
             'worstvideo[vcodec^=avc]+worstaudio'
@@ -87,16 +130,12 @@ def get_video_format_string(quality='best'):
             '/worst'
         )
     elif quality == 'medium':
-        return (
-            'bestvideo[height<=720][vcodec^=avc]+bestaudio[ext=m4a]'
-            '/bestvideo[height<=720][vcodec^=avc]+bestaudio'
-            '/bestvideo[height<=720]+bestaudio[ext=m4a]'
-            '/bestvideo[height<=720]+bestaudio'
-            '/best[height<=720]'
-            '/best'
-        )
+        return _height_capped_format(720)
     else:
-        # Default: best quality
+        # Default 'best': apply the global resolution cap when configured,
+        # so a 4K/8K source doesn't produce an enormous file by default.
+        if max_height:
+            return _height_capped_format(max_height)
         return (
             'bestvideo[vcodec^=avc]+bestaudio[ext=m4a]'
             '/bestvideo[vcodec^=avc]+bestaudio'

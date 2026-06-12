@@ -201,6 +201,30 @@ export async function transcribeYoutube(request: TranscribeUrlRequest): Promise<
     })
 }
 
+// ---- Format probing (concrete download qualities before downloading) ----
+export interface FormatTier {
+    quality: string          // "1080" | "720" | "480" | "audio"
+    label: string            // e.g. "1080p"
+    height?: number
+    fps?: number | null
+    approx_bytes: number
+    exact: boolean
+}
+
+export interface ProbeFormatsResult {
+    title: string | null
+    duration: number | null
+    tiers: FormatTier[]
+    audio: FormatTier | null
+}
+
+export async function probeFormats(url: string): Promise<ProbeFormatsResult> {
+    return fetchJson(`${API_BASE}/transcribe/probe-formats`, {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+    })
+}
+
 export async function transcribeDouyin(request: TranscribeUrlRequest): Promise<{ task_id: number }> {
     return fetchJson(`${API_BASE}/transcribe/douyin`, {
         method: 'POST',
@@ -456,7 +480,7 @@ export async function deleteCategory(id: number, deletePrompts: boolean = false)
 // ============ System API ============
 
 export async function getSystemConfig(key: string): Promise<string | null> {
-    const response = await fetchJson<{ proxy_url?: string; bilibili_sessdata?: string; youtube_cookies?: string }>(`${API_BASE}/system/settings`)
+    const response = await fetchJson<{ proxy_url?: string; bilibili_sessdata?: string; youtube_cookies?: string; max_resolution?: string }>(`${API_BASE}/system/settings`)
     return response[key as keyof typeof response] ?? null
 }
 

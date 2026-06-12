@@ -14,6 +14,7 @@ export default function SystemTab({ onClose }: { onClose: () => void }) {
     const [proxyUrl, setProxyUrl] = useState('')
     const [biliSessdata, setBiliSessdata] = useState('')
     const [ytCookies, setYtCookies] = useState('')
+    const [maxResolution, setMaxResolution] = useState('1080')
     const [showBiliCookie, setShowBiliCookie] = useState(false)
     const [showYtCookie, setShowYtCookie] = useState(false)
 
@@ -22,6 +23,7 @@ export default function SystemTab({ onClose }: { onClose: () => void }) {
         getSystemConfig('proxy_url').then(val => setProxyUrl(val || ''))
         getSystemConfig('bilibili_sessdata').then(val => setBiliSessdata(val || ''))
         getSystemConfig('youtube_cookies').then(val => setYtCookies(val || ''))
+        getSystemConfig('max_resolution').then(val => setMaxResolution(val || '1080'))
     }, [])
 
     const saveProxyMutation = useMutation({
@@ -41,6 +43,17 @@ export default function SystemTab({ onClose }: { onClose: () => void }) {
         onSuccess: () => showToast('success', t('settings.system.ytCookieSaved')),
         onError: () => showToast('error', t('settings.system.ytCookieSaveFailed')),
     })
+
+    const saveMaxResMutation = useMutation({
+        mutationFn: (val: string) => setSystemConfig('max_resolution', val),
+        onSuccess: () => showToast('success', t('settings.system.maxResSaved')),
+        onError: () => showToast('error', t('settings.system.maxResSaveFailed')),
+    })
+
+    const handleMaxResChange = (val: string) => {
+        setMaxResolution(val)
+        saveMaxResMutation.mutate(val)
+    }
 
     return (
         <div className="space-y-8">
@@ -155,6 +168,34 @@ export default function SystemTab({ onClose }: { onClose: () => void }) {
                 </div>
                 <p className="text-xs text-[var(--color-text-muted)]">
                     {t('settings.system.ytCookieHint')}
+                </p>
+            </div>
+
+            <hr className="border-[var(--color-border)]" />
+
+            {/* Default max download resolution */}
+            <div className="space-y-4">
+                <h3 className="font-medium flex items-center gap-2">
+                    <Icons.SlidersHorizontal className="w-5 h-5" />
+                    {t('settings.system.maxResTitle')}
+                </h3>
+                <div className="relative max-w-xs">
+                    <select
+                        value={maxResolution}
+                        onChange={(e) => handleMaxResChange(e.target.value)}
+                        className="w-full pl-3 pr-8 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm appearance-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                    >
+                        <option value="2160">{t('settings.system.maxRes.2160')}</option>
+                        <option value="1440">{t('settings.system.maxRes.1440')}</option>
+                        <option value="1080">{t('settings.system.maxRes.1080')}</option>
+                        <option value="720">{t('settings.system.maxRes.720')}</option>
+                        <option value="480">{t('settings.system.maxRes.480')}</option>
+                        <option value="unlimited">{t('settings.system.maxRes.unlimited')}</option>
+                    </select>
+                    <Icons.ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                    {t('settings.system.maxResHint')}
                 </p>
             </div>
 
