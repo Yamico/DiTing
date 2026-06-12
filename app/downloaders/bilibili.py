@@ -14,6 +14,8 @@ from app.downloaders._utils import (
     safe_cleanup,
     retry_on_network_error,
     get_bilibili_headers,
+    apply_bilibili_cookies,
+    DownloadBlockedError,
 )
 
 
@@ -21,6 +23,25 @@ def _get_sessdata():
     """Read Bilibili SESSDATA cookie from system config."""
     from app.db import get_system_config
     return get_system_config('bilibili_sessdata')
+
+
+def _raise_if_blocked(e, sessdata):
+    """
+    Translate a yt-dlp HTTP 412 (Bilibili risk control) into an actionable,
+    non-retryable DownloadBlockedError. Re-raises the original exception otherwise.
+    """
+    msg = str(e)
+    if '412' in msg or 'Precondition Failed' in msg:
+        if sessdata:
+            raise DownloadBlockedError(
+                "Bilibili 风控拦截 (HTTP 412)。已配置的 SESSDATA 可能已过期或失效，"
+                "请在「设置 → Bilibili」中更新 Cookie 后重试。"
+            ) from e
+        raise DownloadBlockedError(
+            "Bilibili 风控拦截了匿名下载 (HTTP 412)。B 站已限制未登录下载，"
+            "请在「设置 → Bilibili」中填写 SESSDATA Cookie 后重试。"
+        ) from e
+    raise e
 
 
 def download_audio(url, start_time=None, end_time=None, task_id=None, check_cancel_func=None, progress_callback=None):
@@ -45,12 +66,7 @@ def download_audio(url, start_time=None, end_time=None, task_id=None, check_canc
         'quiet': True,
         'no_warnings': True,
         'progress_hooks': [make_progress_hook(task_id, check_cancel_func, progress_callback)],
-        'http_headers': get_bilibili_headers(sessdata),
-        'extractor_args': {
-            'bilibili': {
-                'player_client': ['web', 'android']
-            }
-        }
+        'http_headers': get_bilibili_headers(),
     }
 
     # NOTE: We do NOT use yt-dlp's download_ranges here.
@@ -65,7 +81,11 @@ def download_audio(url, start_time=None, end_time=None, task_id=None, check_canc
         if check_cancel_func:
             check_cancel_func(task_id)
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            apply_bilibili_cookies(ydl, sessdata)
+            try:
+                ydl.download([url])
+            except yt_dlp.utils.DownloadError as e:
+                _raise_if_blocked(e, sessdata)
         return find_downloaded_file(download_dir, filename, '.mp3')
 
     audio_path = _do_download()
@@ -118,21 +138,24 @@ def download_bilibili_video(url, quality='best', task_id=None, check_cancel_func
             'quiet': True,
             'no_warnings': True,
             'progress_hooks': [make_progress_hook(task_id, check_cancel_func, progress_callback, label="Video")],
-            'http_headers': get_bilibili_headers(sessdata),
-            'extractor_args': {
-                'bilibili': {
-                    'player_client': ['web', 'android']
-                }
-            }
+            'http_headers': get_bilibili_headers(),
         }
 
         if check_cancel_func:
             check_cancel_func(task_id)
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            apply_bilibili_cookies(ydl, sessdata)
+            try:
+                ydl.download([url])
+            except yt_dlp.utils.DownloadError as e:
+                _raise_if_blocked(e, sessdata)
 
         return find_downloaded_file(download_dir, filename, '.mp4')
 
+    except DownloadBlockedError as e:
+        # Actionable risk-control block — surface to the caller (and the UI)
+        logger.error(f"❌ {e}")
+        raise
     except Exception as e:
         check_and_reraise_cancel(e)
         logger.error(f"❌ 视频下载失败: {e}")

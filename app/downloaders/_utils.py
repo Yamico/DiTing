@@ -4,8 +4,17 @@ Provides common logic: progress hooks, file lookup, retry, format selection, etc
 """
 import os
 import time
+import uuid
 import functools
 from app.core.logger import logger
+
+
+class DownloadBlockedError(Exception):
+    """
+    Raised when a download is blocked by the source's anti-bot / risk control
+    (e.g. Bilibili HTTP 412 Precondition Failed). Not retryable — the message is
+    actionable and is surfaced to the user verbatim.
+    """
 
 
 def make_progress_hook(task_id=None, check_cancel_func=None, progress_callback=None, label="Downloading"):
@@ -141,6 +150,11 @@ def retry_on_network_error(max_retries=3, retry_delay=5):
                     # Always re-raise cancellation
                     check_and_reraise_cancel(e)
 
+                    # Fatal, non-retryable blocks (risk control) propagate to caller
+                    if isinstance(e, DownloadBlockedError):
+                        logger.error(f"❌ {e}")
+                        raise
+
                     error_str = str(e).lower()
                     is_network = any(kw in error_str for kw in NETWORK_KEYWORDS)
 
@@ -161,15 +175,46 @@ def retry_on_network_error(max_retries=3, retry_delay=5):
     return decorator
 
 
-def get_bilibili_headers(sessdata=None):
+def get_bilibili_headers():
     """
-    Build HTTP headers for Bilibili requests.
-    Optionally includes SESSDATA cookie for higher quality access.
+    Build HTTP headers for Bilibili requests (User-Agent + Referer only).
+
+    Cookies are intentionally NOT set here. yt-dlp ignores a `Cookie` HTTP
+    header for its login / risk-control logic (it reads the cookie *jar*
+    instead), so SESSDATA passed as a header was being silently dropped.
+    Use apply_bilibili_cookies() on the live YoutubeDL instance instead.
     """
-    headers = {
+    return {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': 'https://www.bilibili.com/',
     }
+
+
+def apply_bilibili_cookies(ydl, sessdata=None):
+    """
+    Inject Bilibili cookies into a live YoutubeDL instance's cookie jar.
+
+    Bilibili's risk control (gaia WAF) has two gates that both return
+    HTTP 412 Precondition Failed:
+
+    1. The initial webpage request fails without a `buvid3` cookie. We mint one
+       the same way yt-dlp's own search extractor does ('<uuid4>infoc').
+    2. The anonymous stream API ('/x/player/wbi/playurl?try_look=1') is blocked.
+       The only reliable bypass is being logged in: yt-dlp's `is_logged_in`
+       check reads the cookie JAR (not http_headers), and only the logged-in
+       branch reads play info straight from the page HTML, skipping that API.
+
+    Must be called AFTER constructing YoutubeDL and BEFORE download().
+    """
+    import requests  # project dependency; used only to build cookie objects
+
+    def _set(name, value):
+        ydl.cookiejar.set_cookie(
+            requests.cookies.create_cookie(domain='.bilibili.com', name=name, value=value)
+        )
+
+    have = {c.name for c in ydl.cookiejar.get_cookies_for_url('https://www.bilibili.com')}
+    if 'buvid3' not in have:
+        _set('buvid3', f'{uuid.uuid4()}infoc')
     if sessdata:
-        headers['Cookie'] = f'SESSDATA={sessdata}'
-    return headers
+        _set('SESSDATA', sessdata)
