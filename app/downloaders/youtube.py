@@ -1,5 +1,6 @@
 import yt_dlp
 import os
+import time
 import uuid
 import tempfile
 from app.core.logger import logger
@@ -44,6 +45,44 @@ def _is_format_error(e):
     """Check if an exception is a yt-dlp format availability error (often caused by bad cookies)."""
     msg = str(e).lower()
     return 'requested format is not available' in msg
+
+
+def _is_rate_limit_error(e):
+    """Check if an exception is a YouTube rate-limit (HTTP 429) error."""
+    msg = str(e).lower()
+    return '429' in msg or 'too many requests' in msg
+
+
+# Subtitle language groups, keyed by primary language. Each group lists the
+# YouTube language codes (most-preferred first) that satisfy that language.
+_SUBTITLE_LANG_GROUPS = {
+    'zh': ['zh-Hans', 'zh-CN', 'zh', 'zh-TW', 'zh-Hant'],
+    'en': ['en', 'en-US', 'en-GB', 'en-orig'],
+    'ja': ['ja'],
+    'ko': ['ko'],
+}
+
+
+def _build_subtitle_lang_priority(language):
+    """
+    Build an ordered list of language-code groups based on the requested language.
+    The requested language's group comes first; the remaining groups follow as
+    fallbacks. Returns a list of lists, e.g. [['en', 'en-US', ...], ['zh-Hans', ...]].
+    """
+    lang = (language or 'zh').lower()
+    if lang.startswith('en'):
+        primary = 'en'
+    elif lang.startswith('zh'):
+        primary = 'zh'
+    elif lang.startswith('ja'):
+        primary = 'ja'
+    elif lang.startswith('ko'):
+        primary = 'ko'
+    else:
+        primary = 'zh'
+
+    ordered_keys = [primary] + [k for k in _SUBTITLE_LANG_GROUPS if k != primary]
+    return [_SUBTITLE_LANG_GROUPS[k] for k in ordered_keys]
 
 
 def get_youtube_info(url, proxy=None):
@@ -223,9 +262,9 @@ def download_youtube_media(url, quality='best', output_dir=None, proxy=None, tas
 def download_youtube_subtitles(url, output_dir=None, proxy=None, language='zh'):
     """
     Attempt to download subtitles for a YouTube video.
-    Logic: 
+    Logic:
     1. Prefer Manual Subtitles > Auto-generated
-    2. Prefer Chinese (zh-Hans, zh-CN, zh, zh-TW, zh-Hant) > English (en, en-US, en-GB) > Any
+    2. Prefer the requested `language` (e.g. 'en' -> en, en-US...) > other languages
     Returns: (path_to_subtitle_file, subtitle_content_string) or (None, None)
     """
     if output_dir is None:
@@ -234,16 +273,15 @@ def download_youtube_subtitles(url, output_dir=None, proxy=None, language='zh'):
     filename_base = str(uuid.uuid4())
     output_template = os.path.join(output_dir, f"{filename_base}")  # yt-dlp appends .lang.srt
 
-    # Priority lists
-    zh_langs = ['zh-Hans', 'zh-CN', 'zh', 'zh-TW', 'zh-Hant']
-    en_langs = ['en', 'en-US', 'en-GB']
+    # Ordered language-code groups: requested language first, others as fallback
+    lang_priority = _build_subtitle_lang_priority(language)
 
     cookie_file = _get_youtube_cookies()
     try:
-        result = _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base, output_template, zh_langs, en_langs)
+        result = _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base, output_template, lang_priority)
         if result:
             return result
-        
+
         # If failed with cookies, retry without
         if cookie_file:
             logger.warning(f"⚠️ Subtitle fetch failed with cookies, retrying without cookies...")
@@ -251,7 +289,7 @@ def download_youtube_subtitles(url, output_dir=None, proxy=None, language='zh'):
             cookie_file = None
             filename_base = str(uuid.uuid4())
             output_template = os.path.join(output_dir, f"{filename_base}")
-            result = _download_subtitles_inner(url, output_dir, proxy, None, filename_base, output_template, zh_langs, en_langs)
+            result = _download_subtitles_inner(url, output_dir, proxy, None, filename_base, output_template, lang_priority)
             if result:
                 return result
 
@@ -264,7 +302,7 @@ def download_youtube_subtitles(url, output_dir=None, proxy=None, language='zh'):
         _cleanup_cookie_file(cookie_file)
 
 
-def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base, output_template, zh_langs, en_langs):
+def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base, output_template, lang_priority):
     """Inner implementation for subtitle download. Returns (path, content) or None on failure."""
     try:
         # Step 1: Fetch metadata to inspect available subtitles
@@ -281,6 +319,14 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
         target_lang = None
         is_auto = False
 
+        def find_lang(available_langs):
+            """Pick the first available code, scanning groups in priority order."""
+            for group in lang_priority:
+                for code in group:
+                    if code in available_langs:
+                        return code
+            return None
+
         with yt_dlp.YoutubeDL(ydl_opts_meta) as ydl:
             logger.info(f"🔍 Fetching subtitle metadata for {url}...")
             info = ydl.extract_info(url, download=False)
@@ -288,16 +334,8 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
             subtitles = info.get('subtitles', {})
             auto_captions = info.get('automatic_captions', {})
 
-            def find_lang(available_langs, priorities):
-                for p in priorities:
-                    if p in available_langs:
-                        return p
-                return None
-
             # 1. Check Manual Subtitles
-            target_lang = find_lang(subtitles.keys(), zh_langs)
-            if not target_lang:
-                target_lang = find_lang(subtitles.keys(), en_langs)
+            target_lang = find_lang(subtitles.keys())
             if not target_lang and subtitles:
                 target_lang = list(subtitles.keys())[0]
 
@@ -306,9 +344,7 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
                 is_auto = False
             else:
                 # 2. Check Auto Subtitles
-                target_lang = find_lang(auto_captions.keys(), zh_langs)
-                if not target_lang:
-                    target_lang = find_lang(auto_captions.keys(), en_langs)
+                target_lang = find_lang(auto_captions.keys())
                 if not target_lang and auto_captions:
                     target_lang = list(auto_captions.keys())[0]
 
@@ -320,7 +356,9 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
             logger.info("❌ No subtitles found.")
             return None
 
-        # Step 2: Download specific subtitle
+        # Step 2: Download specific subtitle.
+        # YouTube's timedtext endpoint rate-limits aggressively (HTTP 429), so we
+        # retry with exponential backoff — 429 is transient and waiting clears it.
         ydl_opts_down = {
             'skip_download': True,
             'ignore_no_formats_error': True,
@@ -332,20 +370,35 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
             'quiet': True,
             'no_warnings': True,
             'proxy': proxy,
+            'sleep_interval_requests': 1,
         }
         if cookie_file:
             ydl_opts_down['cookiefile'] = cookie_file
 
-        with yt_dlp.YoutubeDL(ydl_opts_down) as ydl:
-            ydl.download([url])
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts_down) as ydl:
+                    ydl.download([url])
+                break
+            except Exception as e:
+                if _is_rate_limit_error(e) and attempt < max_retries - 1:
+                    wait_time = 10 * (attempt + 1)
+                    logger.warning(
+                        f"⚠️ Subtitle download rate-limited (429), "
+                        f"retrying in {wait_time}s ({attempt + 1}/{max_retries})..."
+                    )
+                    time.sleep(wait_time)
+                    continue
+                raise
 
-            # Find the file
-            for f in os.listdir(output_dir):
-                if f.startswith(filename_base) and f.endswith('.srt'):
-                    expected_file = os.path.join(output_dir, f)
-                    with open(expected_file, 'r', encoding='utf-8') as fh:
-                        content = fh.read()
-                    return expected_file, content
+        # Find the downloaded file
+        for f in os.listdir(output_dir):
+            if f.startswith(filename_base) and f.endswith('.srt'):
+                expected_file = os.path.join(output_dir, f)
+                with open(expected_file, 'r', encoding='utf-8') as fh:
+                    content = fh.read()
+                return expected_file, content
 
     except Exception as e:
         if _is_format_error(e):
