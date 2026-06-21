@@ -462,7 +462,8 @@
         "noteScreenshotHint": "需要本地视频缓存才能截图",
         "probeFormats": "检测可用清晰度",
         "probing": "检测中…",
-        "probeSizeHint": "文件大小为预估值，实际可能略有差异。"
+        "probeSizeHint": "文件大小为预估值，实际可能略有差异。",
+        "probeUnavailable": "无法检测具体清晰度，仍可使用默认清晰度选项。"
     },
     "retranscribeModal": {
         "newSegmentHint": "将创建新的转录记录，不会覆盖已有内容",

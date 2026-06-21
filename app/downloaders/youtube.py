@@ -155,6 +155,9 @@ def get_youtube_info(url, proxy=None):
 # when the user opens the picker repeatedly. Keyed by URL -> (timestamp, result).
 _PROBE_CACHE = {}
 _PROBE_TTL_SECONDS = 300
+_PROBE_UNAVAILABLE_TTL_SECONDS = 60
+_PROBE_NETWORK_RETRIES = 2
+_PROBE_RETRY_DELAY_SECONDS = 2
 
 # Standard resolution rungs to surface in the picker (descending).
 _RESOLUTION_LADDER = [1080, 720, 480, 360]
@@ -186,6 +189,52 @@ def _pick_best_audio(audio_formats):
     return max(audio_formats, key=lambda f: (f.get('abr') or f.get('tbr') or 0))
 
 
+def _is_probe_network_error(e):
+    """Transient network/TLS failures worth retrying during optional format probes."""
+    msg = str(e).lower()
+    keywords = [
+        'eof occurred in violation of protocol',
+        '_ssl.c',
+        'ssl',
+        'tls',
+        'timeout',
+        'timed out',
+        'connection reset',
+        'connection aborted',
+        'remote end closed',
+        'unable to download api page',
+        'urlopen error',
+    ]
+    return any(keyword in msg for keyword in keywords)
+
+
+def _probe_failure_reason(e):
+    """Classify probe failures for the UI without exposing raw yt-dlp trace text."""
+    msg = str(e).lower()
+    if 'sign in to confirm' in msg or 'not a bot' in msg:
+        return 'auth_required'
+    if _is_probe_network_error(e):
+        return 'network'
+    if _is_format_error(e) or 'no video formats' in msg:
+        return 'no_formats'
+    return 'probe_failed'
+
+
+def _probe_unavailable_result(title=None, duration=None, reason='probe_failed'):
+    """
+    Return a successful-but-unavailable probe response.
+    Format probing is optional; callers should keep the static quality picker.
+    """
+    return {
+        "title": title,
+        "duration": duration,
+        "tiers": [],
+        "audio": None,
+        "probe_available": False,
+        "probe_reason": reason,
+    }
+
+
 def probe_youtube_formats(url, proxy=None):
     """
     Inspect a YouTube video and return the concrete download options available,
@@ -197,13 +246,19 @@ def probe_youtube_formats(url, proxy=None):
           "title": str,
           "duration": int | None,
           "tiers": [{"quality","label","height","fps","approx_bytes","exact"}, ...],
-          "audio": {"quality":"audio","label","approx_bytes","exact"} | None
+          "audio": {"quality":"audio","label","approx_bytes","exact"} | None,
+          "probe_available": bool,
+          "probe_reason": str | None,
         }
-    or None on failure.
+    On optional probe failure, returns probe_available=false with empty tiers so
+    the UI can fall back to the static quality selector.
     """
     cached = _PROBE_CACHE.get(url)
-    if cached and (time.time() - cached[0]) < _PROBE_TTL_SECONDS:
-        return cached[1]
+    if cached:
+        cached_at, cached_result, *cached_ttl = cached
+        ttl = cached_ttl[0] if cached_ttl else _PROBE_TTL_SECONDS
+        if (time.time() - cached_at) < ttl:
+            return cached_result
 
     ydl_opts = {
         'quiet': True,
@@ -221,19 +276,48 @@ def probe_youtube_formats(url, proxy=None):
             return ydl.extract_info(url, download=False)
 
     try:
-        try:
-            info = _extract()
-        except Exception as e:
-            # Bad cookies can cause format errors — retry once without them
-            if cookie_file and _is_format_error(e):
-                logger.warning(f"⚠️ Format probe error with cookies ({e}), retrying without cookies...")
-                ydl_opts.pop('cookiefile', None)
-                info = _extract()
-            else:
+        last_error = None
+        for attempt in range(_PROBE_NETWORK_RETRIES):
+            try:
+                try:
+                    info = _extract()
+                except Exception as e:
+                    # Bad cookies can cause format errors — retry once without them
+                    if cookie_file and _is_format_error(e):
+                        logger.warning(f"YouTube format probe error with cookies ({e}), retrying without cookies...")
+                        ydl_opts.pop('cookiefile', None)
+                        info = _extract()
+                    else:
+                        raise
+                break
+            except Exception as e:
+                last_error = e
+                if _is_probe_network_error(e) and attempt < _PROBE_NETWORK_RETRIES - 1:
+                    logger.warning(
+                        f"YouTube format probe network error "
+                        f"({attempt + 1}/{_PROBE_NETWORK_RETRIES}), retrying: {e}"
+                    )
+                    time.sleep(_PROBE_RETRY_DELAY_SECONDS)
+                    continue
                 raise
+        else:
+            raise last_error
 
         formats = info.get('formats') or []
         duration = info.get('duration')
+
+        if not formats:
+            result = _probe_unavailable_result(
+                title=info.get('title'),
+                duration=duration,
+                reason='no_formats',
+            )
+            _PROBE_CACHE[url] = (time.time(), result, _PROBE_UNAVAILABLE_TTL_SECONDS)
+            logger.warning(
+                f"YouTube format probe returned no formats for {url}; "
+                "falling back to static quality options."
+            )
+            return result
 
         video_formats = [f for f in formats if f.get('vcodec') not in (None, 'none') and f.get('height')]
         audio_formats = [f for f in formats if f.get('acodec') not in (None, 'none') and f.get('vcodec') in (None, 'none')]
@@ -279,13 +363,21 @@ def probe_youtube_formats(url, proxy=None):
             "duration": duration,
             "tiers": tiers,
             "audio": audio_tier,
+            "probe_available": True,
+            "probe_reason": None,
         }
-        _PROBE_CACHE[url] = (time.time(), result)
+        _PROBE_CACHE[url] = (time.time(), result, _PROBE_TTL_SECONDS)
         return result
 
     except Exception as e:
-        logger.error(f"❌ Format probe failed for {url}: {e}")
-        return None
+        reason = _probe_failure_reason(e)
+        logger.warning(
+            f"YouTube format probe unavailable for {url} "
+            f"(reason={reason}): {e}"
+        )
+        result = _probe_unavailable_result(reason=reason)
+        _PROBE_CACHE[url] = (time.time(), result, _PROBE_UNAVAILABLE_TTL_SECONDS)
+        return result
     finally:
         _cleanup_cookie_file(cookie_file)
 

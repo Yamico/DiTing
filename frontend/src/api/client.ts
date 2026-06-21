@@ -216,6 +216,8 @@ export interface ProbeFormatsResult {
     duration: number | null
     tiers: FormatTier[]
     audio: FormatTier | null
+    probe_available?: boolean
+    probe_reason?: 'auth_required' | 'network' | 'no_formats' | 'probe_failed' | null
 }
 
 export async function probeFormats(url: string): Promise<ProbeFormatsResult> {

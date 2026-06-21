@@ -204,6 +204,11 @@ export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps
             const res = await probeFormats(url.trim())
             const tiers = [...(res.tiers || [])]
             if (res.audio) tiers.push(res.audio)
+            if (res.probe_available === false || tiers.length === 0) {
+                setProbedTiers(null)
+                setProbeError(t('addVideo.probeUnavailable'))
+                return
+            }
             setProbedTiers(tiers)
             // Auto-select the highest tier if the current quality isn't among the results
             const top = tiers[0]

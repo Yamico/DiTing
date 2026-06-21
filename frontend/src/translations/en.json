@@ -458,7 +458,8 @@
         "noteScreenshotHint": "Requires local video cache to capture frames",
         "probeFormats": "Detect available qualities",
         "probing": "Detecting…",
-        "probeSizeHint": "Sizes are estimates; the actual file may differ slightly."
+        "probeSizeHint": "Sizes are estimates; the actual file may differ slightly.",
+        "probeUnavailable": "Could not detect exact qualities. You can still use the default quality options."
     },
     "retranscribeModal": {
         "newSegmentHint": "A new transcription record will be created, existing content won't be overwritten",

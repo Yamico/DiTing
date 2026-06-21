@@ -56,7 +56,7 @@ async def probe_formats(req: ProbeFormatsRequest):
     from app.downloaders.youtube import probe_youtube_formats
     proxy = get_system_config('proxy_url')
     result = await run_in_threadpool(probe_youtube_formats, url, proxy)
-    if not result or not result.get('tiers'):
+    if not result:
         raise HTTPException(status_code=422, detail="Could not retrieve available qualities for this video")
     return result
 
