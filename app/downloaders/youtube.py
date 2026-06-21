@@ -23,6 +23,17 @@ def _get_youtube_cookies():
     cookie_text = get_system_config('youtube_cookies')
     if not cookie_text or not cookie_text.strip():
         return None
+    if _count_netscape_cookie_lines(cookie_text) == 0:
+        if _looks_like_flattened_netscape_cookies(cookie_text):
+            logger.warning(
+                "YouTube cookies look like a Netscape cookies.txt file flattened into one line; "
+                "ignoring them. Re-paste the exported cookies with line breaks preserved."
+            )
+        else:
+            logger.warning(
+                "YouTube cookies are not valid Netscape cookies.txt content; ignoring them."
+            )
+        return None
     try:
         tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8')
         tmp.write(cookie_text)
@@ -42,6 +53,14 @@ def _cleanup_cookie_file(cookie_file):
             pass
 
 
+def _youtube_challenge_solver_opts():
+    """
+    Allow yt-dlp to fetch its YouTube JS challenge solver when required.
+    Without this, some videos only expose storyboard image formats.
+    """
+    return {'remote_components': ['ejs:github']}
+
+
 def _get_max_resolution_config():
     """Read the global `max_resolution` config (raw string), or None if unset."""
     try:
@@ -55,6 +74,29 @@ def _is_format_error(e):
     """Check if an exception is a yt-dlp format availability error (often caused by bad cookies)."""
     msg = str(e).lower()
     return 'requested format is not available' in msg
+
+
+def _count_netscape_cookie_lines(cookie_text):
+    """Count usable Netscape cookies.txt rows without exposing cookie values."""
+    count = 0
+    for line in (cookie_text or '').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = line.split('\t')
+        if len(parts) >= 7 and parts[0] and parts[5]:
+            count += 1
+    return count
+
+
+def _looks_like_flattened_netscape_cookies(cookie_text):
+    """Detect cookies.txt content that lost newlines in a single-line input."""
+    text = (cookie_text or '').strip()
+    return (
+        text.lower().startswith('# netscape http cookie file')
+        and len(text.splitlines()) <= 1
+        and text.count('\t') >= 6
+    )
 
 
 def _is_rate_limit_error(e):
@@ -107,6 +149,7 @@ def get_youtube_info(url, proxy=None):
         'skip_download': True,
         'ignore_no_formats_error': True,
         'proxy': proxy,
+        **_youtube_challenge_solver_opts(),
     }
     if cookie_file:
         ydl_opts['cookiefile'] = cookie_file
@@ -211,13 +254,37 @@ def _is_probe_network_error(e):
 def _probe_failure_reason(e):
     """Classify probe failures for the UI without exposing raw yt-dlp trace text."""
     msg = str(e).lower()
-    if 'sign in to confirm' in msg or 'not a bot' in msg:
+    if _is_auth_required_text(msg):
         return 'auth_required'
     if _is_probe_network_error(e):
         return 'network'
     if _is_format_error(e) or 'no video formats' in msg:
         return 'no_formats'
     return 'probe_failed'
+
+
+def _is_auth_required_text(text):
+    msg = (text or '').lower()
+    return 'sign in to confirm' in msg or 'not a bot' in msg or 'use --cookies' in msg
+
+
+class _YtdlpProbeLogger:
+    """Capture yt-dlp warnings so suppressed no-format cases can be classified."""
+
+    def __init__(self):
+        self.messages = []
+
+    def debug(self, msg):
+        pass
+
+    def warning(self, msg):
+        self.messages.append(str(msg))
+
+    def error(self, msg):
+        self.messages.append(str(msg))
+
+    def text(self):
+        return '\n'.join(self.messages)
 
 
 def _probe_unavailable_result(title=None, duration=None, reason='probe_failed'):
@@ -260,12 +327,15 @@ def probe_youtube_formats(url, proxy=None):
         if (time.time() - cached_at) < ttl:
             return cached_result
 
+    probe_logger = _YtdlpProbeLogger()
     ydl_opts = {
         'quiet': True,
-        'no_warnings': True,
+        'no_warnings': False,
+        'logger': probe_logger,
         'skip_download': True,
         'ignore_no_formats_error': True,
         'proxy': proxy,
+        **_youtube_challenge_solver_opts(),
     }
     cookie_file = _get_youtube_cookies()
     if cookie_file:
@@ -307,15 +377,17 @@ def probe_youtube_formats(url, proxy=None):
         duration = info.get('duration')
 
         if not formats:
+            warning_text = probe_logger.text()
+            reason = 'auth_required' if _is_auth_required_text(warning_text) else 'no_formats'
             result = _probe_unavailable_result(
                 title=info.get('title'),
                 duration=duration,
-                reason='no_formats',
+                reason=reason,
             )
             _PROBE_CACHE[url] = (time.time(), result, _PROBE_UNAVAILABLE_TTL_SECONDS)
             logger.warning(
                 f"YouTube format probe returned no formats for {url}; "
-                "falling back to static quality options."
+                f"falling back to static quality options (reason={reason})."
             )
             return result
 
@@ -400,6 +472,7 @@ def download_youtube_video(url, output_dir=None, proxy=None, task_id=None, check
         'quiet': True,
         'no_warnings': True,
         'proxy': proxy,
+        **_youtube_challenge_solver_opts(),
         'progress_hooks': [make_progress_hook(task_id, check_cancel_func, progress_callback)],
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
@@ -463,6 +536,7 @@ def download_youtube_media(url, quality='best', output_dir=None, proxy=None, tas
         'quiet': True,
         'no_warnings': True,
         'proxy': proxy,
+        **_youtube_challenge_solver_opts(),
         'progress_hooks': [make_progress_hook(task_id, check_cancel_func, progress_callback, label="Downloading Video")],
     }
     if cookie_file:
@@ -554,6 +628,7 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
             'skip_download': True,
             'ignore_no_formats_error': True,
             'proxy': proxy,
+            **_youtube_challenge_solver_opts(),
         }
         if cookie_file:
             ydl_opts_meta['cookiefile'] = cookie_file
@@ -612,6 +687,7 @@ def _download_subtitles_inner(url, output_dir, proxy, cookie_file, filename_base
             'quiet': True,
             'no_warnings': True,
             'proxy': proxy,
+            **_youtube_challenge_solver_opts(),
             'sleep_interval_requests': 1,
         }
         if cookie_file:

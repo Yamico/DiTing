@@ -140,13 +140,9 @@ export default function SystemTab({ onClose }: { onClose: () => void }) {
                                 className="w-full px-3 py-2 pr-10 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm font-mono resize-y flex-1"
                             />
                         ) : (
-                            <input
-                                type="password"
-                                placeholder={t('settings.system.ytCookiePlaceholder')}
-                                value={ytCookies}
-                                onChange={(e) => setYtCookies(e.target.value)}
-                                className="w-full px-3 py-2 pr-10 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm font-mono flex-1"
-                            />
+                            <div className="w-full px-3 py-2 pr-10 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm font-mono min-h-[38px] text-[var(--color-text-muted)] truncate">
+                                {ytCookies ? '••••••••••••••••' : t('settings.system.ytCookiePlaceholder')}
+                            </div>
                         )}
                         <button
                             type="button"
